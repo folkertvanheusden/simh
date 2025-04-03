@@ -65,13 +65,13 @@ void produce_validation_tests()
 
 		json_t *put_mem_i_2 = json_object();
 		uint16_t data1 = rand() % 49152;
-		PWriteW(0102, data1);
+		PWriteW(data1, 0102);
 		json_object_set(put_mem_i_2, "0102", json_integer(data1));
 		json_array_append_new(memory_i, put_mem_i_2);
 
 		json_t *put_mem_i_4 = json_object();
 		uint16_t data2 = rand() % 49152;
-		PWriteW(0104, data2);
+		PWriteW(data2, 0104);
 		json_object_set(put_mem_i_4, "0104", json_integer(data2));
 		json_array_append_new(memory_i, put_mem_i_4);
 
