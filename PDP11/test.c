@@ -9,6 +9,7 @@
 extern t_stat sim_instr();
 //extern uint32 sim_brk_summ;
 extern void PWriteW(int32 data, int32 addr);
+extern int32 PReadW(int32 addr);
 extern int32 REGFILE[6][2];
 extern int32 STACKFILE[4];
 extern int32 saved_PC;
@@ -36,18 +37,26 @@ void produce_validation_tests()
 		json_object_set(before, "stack-2", json_integer(STACKFILE[2]));
 		json_object_set(before, "stack-3", json_integer(STACKFILE[3]));
 
-		json_t *memory = json_array();
-		json_t *mem_i = json_object();
-		json_object_set(mem_i, "0100", json_integer(i));
-		json_array_append_new(memory, mem_i);
-		json_object_set(before, "memory", memory);
+		json_t *memory_i = json_array();
+
+		json_t *put_mem_i_0 = json_object();
 		PWriteW(i, saved_PC);
-		uint16_t data1 = rand() & 0xffff;
-		uint16_t data2 = rand() & 0xffff;
-		json_object_set(mem_i, "0102", json_integer(data1));
-		PWriteW(data1, saved_PC + 2);
-		json_object_set(mem_i, "0104", json_integer(data2));
-		PWriteW(data2, saved_PC + 4);
+		json_object_set(put_mem_i_0, "0100", json_integer(i));
+		json_array_append_new(memory_i, put_mem_i_0);
+
+		json_t *put_mem_i_2 = json_object();
+		uint16_t data1 = rand() % 49152;
+		PWriteW(0102, data1);
+		json_object_set(put_mem_i_2, "0102", json_integer(data1));
+		json_array_append_new(memory_i, put_mem_i_2);
+
+		json_t *put_mem_i_4 = json_object();
+		uint16_t data2 = rand() % 49152;
+		PWriteW(0104, data2);
+		json_object_set(put_mem_i_4, "0104", json_integer(data2));
+		json_array_append_new(memory_i, put_mem_i_4);
+
+		json_object_set(before, "memory", memory_i);
 
 		for(int k=0; k<6; k++) {
 			char name[16];
@@ -85,6 +94,22 @@ void produce_validation_tests()
 		json_object_set(after, "stack-1", json_integer(STACKFILE[1]));
 		json_object_set(after, "stack-2", json_integer(STACKFILE[2]));
 		json_object_set(after, "stack-3", json_integer(STACKFILE[3]));
+
+		json_t *memory_o = json_array();
+
+		json_t *get_mem_i_0 = json_object();
+		json_object_set(get_mem_i_0, "0100", json_integer(PReadW(0100)));
+		json_array_append_new(memory_o, get_mem_i_0);
+
+		json_t *get_mem_i_2 = json_object();
+		json_object_set(get_mem_i_2, "0102", json_integer(PReadW(0102)));
+		json_array_append_new(memory_o, get_mem_i_2);
+
+		json_t *get_mem_i_4 = json_object();
+		json_object_set(get_mem_i_4, "0104", json_integer(PReadW(0104)));
+		json_array_append_new(memory_o, get_mem_i_4);
+
+		json_object_set(after, "memory", memory_o);
 
 		json_t *collection = json_object();
 		json_object_set(collection, "before", before);
