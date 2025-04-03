@@ -15,6 +15,7 @@ extern int32 saved_PC;
 extern int32 PSW;
 extern t_stat cpu_reset(DEVICE *dptr);
 extern DEVICE cpu_dev;
+extern int32 STACKFILE[4];
 
 void produce_validation_tests()
 {
@@ -27,6 +28,13 @@ void produce_validation_tests()
 
 		saved_PC = 0100;
 		json_object_set(before, "PC", json_integer(saved_PC));
+
+		STACKFILE[0] = STACKFILE[1] = STACKFILE[2] = STACKFILE[3] = 010000;
+
+		json_object_set(before, "stack-0", json_integer(STACKFILE[0]));
+		json_object_set(before, "stack-1", json_integer(STACKFILE[1]));
+		json_object_set(before, "stack-2", json_integer(STACKFILE[2]));
+		json_object_set(before, "stack-3", json_integer(STACKFILE[3]));
 
 		json_t *memory = json_array();
 		json_t *mem_i = json_object();
@@ -72,6 +80,11 @@ void produce_validation_tests()
 		}
 
 		json_object_set(after, "PSW", json_integer(PSW));
+
+		json_object_set(after, "stack-0", json_integer(STACKFILE[0]));
+		json_object_set(after, "stack-1", json_integer(STACKFILE[1]));
+		json_object_set(after, "stack-2", json_integer(STACKFILE[2]));
+		json_object_set(after, "stack-3", json_integer(STACKFILE[3]));
 
 		json_t *collection = json_object();
 		json_object_set(collection, "before", before);
