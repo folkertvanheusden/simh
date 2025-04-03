@@ -52,6 +52,7 @@ void produce_validation_tests()
 
 	 	json_t *before = json_object();
 
+		reset_all(0);
 		cpu_reset(&cpu_dev);
 
 		saved_PC = 0100;
