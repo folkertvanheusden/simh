@@ -42,7 +42,12 @@ void produce_validation_tests()
 		if (skip)
 			continue;
 
-		json_t *before = json_object();
+		if (i == 0 ||  // HALT
+		    i == 1 ||  // WAIT
+		    i == 5)  // RESET
+			continue;
+
+	 	json_t *before = json_object();
 
 		cpu_reset(&cpu_dev);
 
@@ -131,6 +136,7 @@ void produce_validation_tests()
 		json_object_set(after, "memory", memory_o);
 
 		json_t *collection = json_object();
+		json_object_set(collection, "id", json_integer(i));
 		json_object_set(collection, "before", before);
 		json_object_set(collection, "after", after);
 
