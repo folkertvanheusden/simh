@@ -23,6 +23,37 @@ struct mem_t {
 	uint16_t value;
 };
 
+int is_prime(int n) {
+    if (n <= 1)
+	    return 0;
+    for(int i = 2; i*i <= n; i++) {
+	    if (n % i == 0)
+		    return 0;
+    }
+    return 1;
+}
+
+uint16_t test_values[65536];
+int n_test_values = 0;
+
+void generate_test_values()
+{
+	for(int i=0; i<65536; i++) {
+		if (is_prime(i))
+			test_values[n_test_values++] = i;
+	}
+
+	for(int i=2; i<16; i++)
+		test_values[n_test_values++] = 1 << i;
+
+	test_values[n_test_values++] = 0;
+	test_values[n_test_values++] = 255;
+	test_values[n_test_values++] = 256;
+	test_values[n_test_values++] = 32767;
+	test_values[n_test_values++] = 32768;
+	test_values[n_test_values++] = 65535;
+}
+
 json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, size_t n_mem)
 {
 	json_t *before = json_object();
@@ -137,6 +168,7 @@ void init_stack_registers()
 
 void emit_branch_instructions(json_t *const target, int *const id)
 {
+	printf("Branch instructions\n");
 	for(int group=0; group<2; group++) {
 		for(int bt=0; bt<8; bt++) {
 			uint16_t instr = (group << 15) | (bt << 8);
@@ -164,66 +196,81 @@ void emit_branch_instructions(json_t *const target, int *const id)
 	}
 }
 
+void emit_condition_sets(json_t *const target, int *const id)
+{
+	printf("Condition set instructions\n");
+	for(int condition=0; condition<16; condition++) {
+		uint16_t instr = 0240 + condition;
+
+		for(int psw_val=0; psw_val<16; psw_val++) {
+			init_simh();
+
+			saved_PC = 0100;
+
+			randomize_registers_all_values();
+
+			init_stack_registers();
+
+			struct mem_t mem[1] = {
+				{ 0100, instr }
+			};
+
+			PSW = psw_val;
+
+			json_t *obj = generate_test(instr, id, mem, 1);
+			if (obj)
+				json_array_append_new(target, obj);
+		}
+	}
+}
+
+void emit_add_sub(json_t *const target, int *const id)
+{
+	printf("ADD/SUB instructions\n");
+	for(int group=0; group<2; group++) {
+		uint16_t instr = (6 << 12 /* instr */) | (group << 15 /* ADD/SUB */) | (1 << 6 /* src=R1 */);
+
+		for(int v1=0; v1<n_test_values; v1++) {
+			for(int v2=0; v2<n_test_values; v2++) {
+				init_simh();
+
+				saved_PC = 0100;
+
+				randomize_registers_all_values();
+				REGFILE[0][0] = REGFILE[0][1] = v1;
+				REGFILE[1][0] = REGFILE[1][1] = v2;
+
+				init_stack_registers();
+
+				struct mem_t mem[1] = {
+					{ 0100, instr }
+				};
+
+				PSW = 0;
+
+				json_t *obj = generate_test(instr, id, mem, 1);
+				if (obj)
+					json_array_append_new(target, obj);
+			}
+		}
+	}
+}
+
 void produce_validation_tests()
 {
 	json_t *out = json_array();
 
-	uint32_t invalid[][2] = {
-		{ 0000007, 0000077 },
-		{ 0000210, 0000227 },
-		{ 0007000, 0007777 },
-		{ 0075040, 0076777 },
-		{ 0106400, 0106477 },
-		{ 0106700, 0107777 },
-	};
+	generate_test_values();
 
 	srand(123);  // for reproducability
 
 	int id = 0;
-#if 0
-	for(int i=0; i<65536; i++) {
-		int skip = 0;
-		for(int test=0; test<6; test++) {
-			if (i >= invalid[test][0] && i <= invalid[test][1]) {
-				skip = 1;
-				break;
-			}
-		}
-		if (skip)
-			continue;
-
-		if (i == 0 ||  // HALT
-		    i == 1 ||  // WAIT
-		    i == 5)  // RESET
-			continue;
-
-		if (i >= 0170000 && i <= 0177777)  // FPU
-			continue;
-
-		init_simh();
-
-		saved_PC = 0100;
-		for(int k=0; k<6; k++) {
-			REGFILE[k][0] = (rand() % 0160000) & (~1);
-			REGFILE[k][1] = (rand() % 0160000) & (~1);
-		}
-
-		STACKFILE[0] = STACKFILE[1] = STACKFILE[2] = STACKFILE[3] = 010000;
-
-		struct mem_t mem[3] = {
-			{ 0100, i },
-			{ 0102, (rand() % 0160000) & (~1) },
-			{ 0104, (rand() % 0160000) & (~1) },
-		};
-
-		PSW = rand() & 15;  // only calculation status bits
-
-		json_t *collection = generate_test(i, &id, mem, 3);
-		json_array_append_new(out, collection);
-	}
-#endif
 
 	emit_branch_instructions(out, &id);
+
+	emit_condition_sets(out, &id);
+
+	emit_add_sub(out, &id);
 
 	FILE *fh = fopen("testset.json", "w");
 	json_dumpf(out, fh, JSON_INDENT(2));
