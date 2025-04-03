@@ -171,26 +171,35 @@ void emit_branch_instructions(json_t *const target, int *const id)
 	printf("Branch instructions\n");
 	for(int group=0; group<2; group++) {
 		for(int bt=0; bt<8; bt++) {
-			uint16_t instr = (group << 15) | (bt << 8);
+			if (group == 0 && bt == 0)  // SWAB
+				continue;
+			for(int direction=0; direction<4; direction++) {
+				uint16_t instr = (group << 15) | (bt << 8);
 
-			for(int psw_val=0; psw_val<16; psw_val++) {
-				init_simh();
+				if (direction & 2)
+					instr |= 62 + (direction & 1);
+				else
+					instr |= 218 + (direction & 1);
 
-				saved_PC = 0100;
+				for(int psw_val=0; psw_val<16; psw_val++) {
+					init_simh();
 
-				randomize_registers_all_values();
+					saved_PC = 0100;
 
-				init_stack_registers();
+					randomize_registers_all_values();
 
-				struct mem_t mem[1] = {
-					{ 0100, instr }
-				};
+					init_stack_registers();
 
-				PSW = psw_val;
+					struct mem_t mem[1] = {
+						{ 0100, instr }
+					};
 
-				json_t *obj = generate_test(instr, id, mem, 1);
-				if (obj)
-					json_array_append_new(target, obj);
+					PSW = psw_val;
+
+					json_t *obj = generate_test(instr, id, mem, 1);
+					if (obj)
+						json_array_append_new(target, obj);
+				}
 			}
 		}
 	}
@@ -270,7 +279,7 @@ void produce_validation_tests()
 
 	emit_condition_sets(out, &id);
 
-	emit_add_sub(out, &id);
+//	emit_add_sub(out, &id);
 
 	FILE *fh = fopen("testset.json", "w");
 	json_dumpf(out, fh, JSON_INDENT(2));
