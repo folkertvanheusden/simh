@@ -22,7 +22,26 @@ void produce_validation_tests()
 {
 	json_t *out = json_array();
 
+	uint32_t invalid[][2] = {
+		{ 0000007, 0000077 },
+		{ 0000210, 0000227 },
+		{ 0007000, 0007777 },
+		{ 0075040, 0076777 },
+		{ 0106400, 0106477 },
+		{ 0106700, 0107777 },
+	};
+
 	for(int i=0; i<65536; i++) {
+		int skip = 0;
+		for(int test=0; test<6; test++) {
+			if (i >= invalid[test][0] && i <= invalid[test][1]) {
+				skip = 1;
+				break;
+			}
+		}
+		if (skip)
+			continue;
+
 		json_t *before = json_object();
 
 		cpu_reset(&cpu_dev);
