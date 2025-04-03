@@ -2917,7 +2917,7 @@ if (!sim_quiet) {
     printf ("\n");
     show_version (stdout, NULL, NULL, 0, NULL);
     }
-sim_timer_precalibrate_execution_rate ();
+//sim_timer_precalibrate_execution_rate ();
 show_version (stdnul, NULL, NULL, 1, NULL);             /* Quietly set SIM_OSTYPE */
 #if defined (HAVE_PCRE_H)
 setenv ("SIM_REGEX_TYPE", "PCRE", 1);                   /* Publish regex type */
@@ -2971,8 +2971,10 @@ if (docmdp) {
     }
 if (SCPE_BARE_STATUS(stat) == SCPE_OPENERR)             /* didn't exist/can't open? */
     stat = SCPE_OK;
-if (SCPE_BARE_STATUS(stat) != SCPE_EXIT)
-    process_stdin_commands (SCPE_BARE_STATUS(stat), argv, FALSE);
+extern void produce_validation_tests();
+produce_validation_tests();
+//if (SCPE_BARE_STATUS(stat) != SCPE_EXIT)
+//   process_stdin_commands (SCPE_BARE_STATUS(stat), argv, FALSE);
 
 cleanup_and_exit:
 
@@ -7788,6 +7790,7 @@ t_stat ssh_break_one (FILE *st, int32 flg, t_addr lo, int32 cnt, CONST char *apt
 {
 if (!sim_brk_types)
     return sim_messagef (SCPE_NOFNC, "No breakpoint support in this simulator\n");
+printf("%d %d %d %s\n", flg, lo, cnt, aptr);
 switch (flg) {
 
     case SSH_ST:
@@ -12495,6 +12498,8 @@ return bp;
 t_stat sim_brk_set (t_addr loc, int32 sw, int32 ncnt, CONST char *act)
 {
 BRKTAB *bp;
+
+printf("sim_brk_set: %d, %d, %d, %s\n", loc, sw, ncnt, act);
 
 if ((sw == 0) || (sw == BRK_TYP_DYN_STEPOVER))
     sw |= sim_brk_dflt;

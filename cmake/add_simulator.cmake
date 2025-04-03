@@ -102,6 +102,7 @@ function(build_simcore _targ)
             simh_regexp
             os_features
             thread_lib
+	    jansson
         )
 
         # Ensure that sim_rev.h picks up .git-commit-id.h if the git command is
@@ -357,7 +358,7 @@ function(add_unit_test _targ)
     simh_executable_template(${UNIT_TARGET} "${ARGN}")
     cmake_parse_arguments(SIMH "FEATURE_INT64;FEATURE_FULL64;BUILDROMS;FEATURE_VIDEO,FEATURE_DISPLAY"
                           "SOURCE_DIR;LABEL"
-                          "DEFINES;INCLUDES;SOURCES"
+			  "DEFINES;INCLUDES;SOURCES"
                           ${ARGN})
 
     target_link_libraries(${UNIT_TARGET} PUBLIC unittest)

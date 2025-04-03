@@ -855,9 +855,9 @@ while (reason == 0)  {
         STACKFILE[cm] = SP;
         saved_PC = PC & 0177777;
         pcq_r->qptr = pcq_p;                            /* update pc q ptr */
-        set_r_display (rs, cm);
+        //set_r_display (rs, cm);
 
-        reason = sim_process_event ();                  /* process events */
+        //reason = sim_process_event ();                  /* process events */
 
         /* restore simh register contents into running variables */
         PC = saved_PC;
@@ -872,7 +872,8 @@ while (reason == 0)  {
         MMR0 = MMR0 | MMR0_IC;                          /* usually on */
 
         trap_req = calc_ints (ipl, trap_req);           /* recalc int req */
-        continue;
+        //continue;
+	break;
         }                                               /* end if sim_interval */
 
     if (trap_req) {                                     /* check traps, ints */
@@ -894,7 +895,8 @@ while (reason == 0)  {
             }                                           /* end else t */
         if (trapea == 0) {                              /* nothing to do? */
             trap_req = calc_ints (ipl, 0);              /* recalculate */
-            continue;                                   /* back to fetch */
+	    break;
+            //continue;                                   /* back to fetch */
             }                                           /* end if trapea */
 
 /* Process a trap or interrupt
@@ -944,7 +946,8 @@ while (reason == 0)  {
         if ((cm == MD_KER) && (SP < (STKLIM + STKL_Y)) &&
             (trapnum != TRAP_V_RED) && (trapnum != TRAP_V_YEL))
             set_stack_trap (SP);
-        continue;                                       /* end if traps */
+	break;
+        //continue;                                       /* end if traps */
         }
 
 /* Fetch and decode next instruction */
@@ -2433,6 +2436,7 @@ while (reason == 0)  {
         else setTRAP (TRAP_ILL);
         break;                                          /* end case 017 */
         }                                               /* end switch op */
+    break;
     }                                                   /* end main loop */
 
 /* Simulation halted */
