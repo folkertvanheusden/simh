@@ -47,6 +47,9 @@ void produce_validation_tests()
 		    i == 5)  // RESET
 			continue;
 
+		if (i >= 0170000 && i <= 0177777)  // FPU
+			continue;
+
 	 	json_t *before = json_object();
 
 		cpu_reset(&cpu_dev);
@@ -69,13 +72,13 @@ void produce_validation_tests()
 		json_array_append_new(memory_i, put_mem_i_0);
 
 		json_t *put_mem_i_2 = json_object();
-		uint16_t data1 = rand() % 49152;
+		uint16_t data1 = (rand() % 0160000) & (~1);
 		PWriteW(data1, 0102);
 		json_object_set(put_mem_i_2, "0102", json_integer(data1));
 		json_array_append_new(memory_i, put_mem_i_2);
 
 		json_t *put_mem_i_4 = json_object();
-		uint16_t data2 = rand() % 49152;
+		uint16_t data2 = (rand() % 0160000) & (~1);
 		PWriteW(data2, 0104);
 		json_object_set(put_mem_i_4, "0104", json_integer(data2));
 		json_array_append_new(memory_i, put_mem_i_4);
@@ -86,13 +89,15 @@ void produce_validation_tests()
 			char name[16];
 
 			sprintf(name, "reg-%d.%d", k, 0);
-			REGFILE[k][0] = rand() & 0xffff;
+			REGFILE[k][0] = (rand() % 0160000) & (~1);
 			json_object_set(before, name, json_integer(REGFILE[k][0]));
 
 			sprintf(name, "reg-%d.%d", k, 1);
-			REGFILE[k][1] = rand() & 0xffff;
+			REGFILE[k][1] = (rand() % 0160000) & (~1);
 			json_object_set(before, name, json_integer(REGFILE[k][1]));
 		}
+
+		// FIXME initialize PSW
 
 		json_object_set(before, "PSW", json_integer(PSW));
 
