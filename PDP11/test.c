@@ -31,6 +31,8 @@ void produce_validation_tests()
 		{ 0106700, 0107777 },
 	};
 
+	srand(123);  // for reproducability
+
 	for(int i=0; i<65536; i++) {
 		int skip = 0;
 		for(int test=0; test<6; test++) {
