@@ -123,17 +123,14 @@ json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, si
 
 	json_t *memory_o = json_array();
 
-	json_t *get_mem_i_0 = json_object();
-	json_object_set(get_mem_i_0, "0100", json_integer(PReadW(0100)));
-	json_array_append_new(memory_o, get_mem_i_0);
+	for(size_t i=0; i<n_mem; i++) {
+		char buffer[16];
+		sprintf(buffer, "%06o", mem[i].addr);
 
-	json_t *get_mem_i_2 = json_object();
-	json_object_set(get_mem_i_2, "0102", json_integer(PReadW(0102)));
-	json_array_append_new(memory_o, get_mem_i_2);
-
-	json_t *get_mem_i_4 = json_object();
-	json_object_set(get_mem_i_4, "0104", json_integer(PReadW(0104)));
-	json_array_append_new(memory_o, get_mem_i_4);
+		json_t *get_mem = json_object();
+		json_object_set(get_mem, buffer, json_integer(PReadW(mem[i].addr)));
+		json_array_append_new(memory_o, get_mem);
+	}
 
 	json_object_set(after, "memory", memory_o);
 
@@ -315,6 +312,56 @@ void emit_add_sub_c()
 	dump_json(filename, out);
 }
 
+void emit_bit_instructions()
+{
+	printf("bit instructions\n");
+	const char *const filename = "pdp1170-valtest-BIT-INSTRUCTIONS.json";
+	if (file_exist(filename))
+		return;
+	int id = 0;
+	json_t *out = json_array();
+	int count = 0;
+	int total = n_test_values * n_test_values * 3 * 2 * 2;
+	time_t start = time(NULL);
+	for(int word=0; word<2; word++) {
+		for(int group=3; group<6; group++) {
+			uint16_t instr = (word << 15) | (group << 12) | (1 << 6 /* src=R1 */);
+
+			for(int v1=0; v1<n_test_values; v1++) {
+				for(int v2=0; v2<n_test_values; v2++) {
+					for(int psw_val=0; psw_val<2; psw_val++) {
+						count++;
+
+						init_simh();
+
+						saved_PC = 0100;
+
+						randomize_registers_all_values();
+						REGFILE[0][0] = REGFILE[0][1] = v1;
+						REGFILE[1][0] = REGFILE[1][1] = v2;
+
+						init_stack_registers();
+
+						struct mem_t mem[1] = {
+							{ 0100, instr }
+						};
+
+						PSW = psw_val;
+
+						json_t *obj = generate_test(instr, &id, mem, 1);
+						if (obj)
+							json_array_append_new(out, obj);
+					}
+				}
+
+				printf("%.2f%% %f      \r", count * 100 / (double)total, total / (double)count * (time(NULL) - start));
+				fflush(NULL);
+			}
+		}
+	}
+	dump_json(filename, out);
+}
+
 void produce_validation_tests()
 {
 	srand(123);  // for reproducability
@@ -324,4 +371,5 @@ void produce_validation_tests()
 	emit_branch_instructions();
 	emit_condition_sets();
 	emit_add_sub_c();
+	emit_bit_instructions();
 }
