@@ -376,7 +376,7 @@ void emit_add_double_oper_instr()
 	int total = n_test_values * n_test_values * (8 - 2);
 	time_t start = time(NULL);
 	for(int group=0; group<8; group++) {
-		uint16_t instr = (7 << 12) | (group << 9 /* instr */) | (1 << 6 /* src=R1 */);
+		uint16_t instr = (7 << 12) | (group << 9 /* instr */) | (2 << 6 /* src=R2 */);
 
 		if (group == 5 || group == 6)
 			continue;
@@ -391,7 +391,7 @@ void emit_add_double_oper_instr()
 
 				randomize_registers_all_values();
 				REGFILE[0][0] = REGFILE[0][1] = v1;
-				REGFILE[1][0] = REGFILE[1][1] = v2;
+				REGFILE[2][0] = REGFILE[2][1] = v2;
 
 				init_stack_registers();
 
