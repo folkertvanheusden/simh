@@ -1,6 +1,7 @@
 #include <jansson.h>
 #include <stdio.h>
 #include <time.h>
+#include <sys/stat.h>
 
 #include "pdp11_defs.h"
 #include "sim_defs.h"
@@ -35,6 +36,12 @@ int is_prime(int n) {
     return 1;
 }
 
+int file_exist(const char *const filename)
+{
+	struct stat st;
+	return stat(filename, &st) == 0;
+}
+
 uint16_t test_values[65536];
 int n_test_values = 0;
 
@@ -52,8 +59,6 @@ void generate_test_values()
 	test_values[n_test_values++] = 255;
 	test_values[n_test_values++] = 32767;
 	test_values[n_test_values++] = 65535;
-
-	printf("%d\n", n_test_values);
 }
 
 json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, size_t n_mem)
@@ -177,9 +182,12 @@ void dump_json(const char *const filename, json_t *const j)
 
 void emit_branch_instructions()
 {
+	printf("Branch instructions\n");
+	const char *const filename = "pdp1170-valtest-COND-BRANCHES.json";
+	if (file_exist(filename))
+		return;
 	int id = 0;
 	json_t *out = json_array();
-	printf("Branch instructions\n");
 	for(int group=0; group<2; group++) {
 		for(int bt=0; bt<8; bt++) {
 			if (group == 0 && bt == 0)  // SWAB
@@ -214,14 +222,17 @@ void emit_branch_instructions()
 			}
 		}
 	}
-	dump_json("pdp1170-valtest-COND-BRANCHES.json", out);
+	dump_json(filename, out);
 }
 
 void emit_condition_sets()
 {
+	printf("Condition set instructions\n");
+	const char *const filename = "pdp1170-valtest-CONDITIONS.json";
+	if (file_exist(filename))
+		return;
 	int id = 0;
 	json_t *out = json_array();
-	printf("Condition set instructions\n");
 	for(int condition=0; condition<16; condition++) {
 		uint16_t instr = 0240 + condition;
 
@@ -245,17 +256,20 @@ void emit_condition_sets()
 				json_array_append_new(out, obj);
 		}
 	}
-	dump_json("pdp1170-valtest-CONDITIONS.json", out);
+	dump_json(filename, out);
 }
 
 void emit_add_sub_c()
 {
+	printf("ADD/SUB/ADC/SBC instructions\n");
+	const char *const filename = "pdp1170-valtest-ADD_SUB_ADC_SBC.json";
+	if (file_exist(filename))
+		return;
 	int id = 0;
 	json_t *out = json_array();
 	int count = 0;
 	int total = n_test_values * n_test_values * 4 * 2;
 	time_t start = time(NULL);
-	printf("ADD/SUB/ADC/SBC instructions\n");
 	for(int group=0; group<4; group++) {
 		uint16_t instr = 0;
 		int      word  = group & 1;
@@ -298,7 +312,7 @@ void emit_add_sub_c()
 			fflush(NULL);
 		}
 	}
-	dump_json("pdp1170-valtest-ADD_SUB_ADC_SBC.json", out);
+	dump_json(filename, out);
 }
 
 void produce_validation_tests()
