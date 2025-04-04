@@ -312,6 +312,55 @@ void emit_add_sub_c()
 	dump_json(filename, out);
 }
 
+void emit_single_operand_instructions()
+{
+	printf("single operand instructions\n");
+	int groups[] = { 00001, 00003, 00050, 01050, 00051, 01051, 00052, 01052, 00053, 01053, 00054, 01054, 00057, 01057, 00060, 01060, 00061, 01061, 00062, 01062, 00063, 01063, 00067, -1 };
+
+	for(int group=0; group<23; group++) {
+		char filename[128] = { 0 };
+		sprintf(filename, "pdp1170-valtest-SINGLE_OPERAND-%o.json", groups[group]);
+		if (file_exist(filename))
+			continue;
+		printf("%s       \r", filename);
+		fflush(NULL);
+
+		int id = 0;
+		json_t *out = json_array();
+
+		uint16_t instr = 0;
+
+		if (groups[group] == 00001)  // JMP can't jump to a register
+			instr = (groups[group] << 6) | 010;  // (R0)
+		else
+			instr = (groups[group] << 6) | 001;  // R0
+
+		for(int v1=0; v1<n_test_values; v1++) {
+			for(int psw_val=0; psw_val<2; psw_val++) {
+				init_simh();
+
+				saved_PC = 0100;
+
+				randomize_registers_all_values();
+				REGFILE[0][0] = REGFILE[0][1] = v1;
+
+				init_stack_registers();
+
+				struct mem_t mem[1] = {
+					{ 0100, instr }
+				};
+
+				PSW = psw_val;
+
+				json_t *obj = generate_test(instr, &id, mem, 1);
+				if (obj)
+					json_array_append_new(out, obj);
+			}
+		}
+		dump_json(filename, out);
+	}
+}
+
 void emit_cmp()
 {
 	printf("CMP instructions\n");
@@ -472,6 +521,8 @@ void produce_validation_tests()
 	emit_branch_instructions();  // conditional_branch_instructions*
 	emit_condition_sets();  // condition_code_operations*
 	emit_add_double_oper_instr();  // additional_double_operand_instructions*
+
+	emit_single_operand_instructions();
 
 	emit_add_sub_c();  // double_operand_instructions, single_operand_instructions
 	emit_bit_instructions();  // double_operand_instructions
