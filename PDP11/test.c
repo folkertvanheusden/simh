@@ -288,8 +288,8 @@ void emit_add_sub_c()
 					saved_PC = 0100;
 
 					randomize_registers_all_values();
-					REGFILE[0][0] = REGFILE[0][1] = v1;
-					REGFILE[1][0] = REGFILE[1][1] = v2;
+					REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
+					REGFILE[1][0] = REGFILE[1][1] = test_values[v2];
 
 					init_stack_registers();
 
@@ -342,7 +342,7 @@ void emit_single_operand_instructions()
 				saved_PC = 0100;
 
 				randomize_registers_all_values();
-				REGFILE[0][0] = REGFILE[0][1] = v1;
+				REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
 
 				init_stack_registers();
 
@@ -389,8 +389,8 @@ void emit_cmp()
 					saved_PC = 0100;
 
 					randomize_registers_all_values();
-					REGFILE[0][0] = REGFILE[0][1] = v1;
-					REGFILE[1][0] = REGFILE[1][1] = v2;
+					REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
+					REGFILE[1][0] = REGFILE[1][1] = test_values[v2];
 
 					init_stack_registers();
 
@@ -439,8 +439,8 @@ void emit_add_double_oper_instr()
 				saved_PC = 0100;
 
 				randomize_registers_all_values();
-				REGFILE[0][0] = REGFILE[0][1] = v1;
-				REGFILE[2][0] = REGFILE[2][1] = v2;
+				REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
+				REGFILE[1][0] = REGFILE[1][1] = test_values[v2];
 
 				init_stack_registers();
 
@@ -487,8 +487,8 @@ void emit_bit_instructions()
 						saved_PC = 0100;
 
 						randomize_registers_all_values();
-						REGFILE[0][0] = REGFILE[0][1] = v1;
-						REGFILE[1][0] = REGFILE[1][1] = v2;
+						REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
+						REGFILE[1][0] = REGFILE[1][1] = test_values[v2];
 
 						init_stack_registers();
 
@@ -512,6 +512,78 @@ void emit_bit_instructions()
 	dump_json(filename, out);
 }
 
+void emit_misc_operations()
+{
+	printf("misc instructions\n");
+
+	const char *const filename = "pdp1170-valtest-MISC.json";
+	if (file_exist(filename))
+		return;
+
+	int id = 0;
+	json_t *out = json_array();
+
+	int groups[] = { 2, 3, 6 };
+
+	for(int group=0; group<3; group++) {
+		uint16_t instr = groups[group];
+
+		init_simh();
+
+		saved_PC = 0100;
+
+		randomize_registers_all_values();
+
+		init_stack_registers();
+
+		struct mem_t mem[1] = {
+			{ 0100, instr }
+		};
+
+		PSW = 0;
+
+		json_t *obj = generate_test(instr, &id, mem, 1);
+		if (obj)
+			json_array_append_new(out, obj);
+	}
+
+	for(int group=0; group<3; group++) {
+		uint16_t instr = 0;
+		if (instr == 0)
+			instr = 0100 | 010;  // JMP (R0)
+		else if (instr == 1)
+			instr = 04000 | 0110;  // JSR R1,(R0)
+		else if (instr == 2)
+			instr = 0200 | 01;  // RET (R1)
+
+		for(int v1=0; v1<n_test_values; v1++) {
+			for(int v2=0; v2<n_test_values; v2++) {
+				init_simh();
+
+				saved_PC = 0100;
+
+				randomize_registers_all_values();
+				REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
+				REGFILE[1][0] = REGFILE[1][1] = test_values[v2];
+
+				init_stack_registers();
+
+				struct mem_t mem[1] = {
+					{ 0100, instr }
+				};
+
+				PSW = 0;
+
+				json_t *obj = generate_test(instr, &id, mem, 1);
+				if (obj)
+					json_array_append_new(out, obj);
+			}
+		}
+	}
+
+	dump_json(filename, out);
+}
+
 void produce_validation_tests()
 {
 	srand(123);  // for reproducability
@@ -525,6 +597,7 @@ void produce_validation_tests()
 	emit_single_operand_instructions();  // single_operand_instructions
 	emit_bit_instructions();  // double_operand_instructions
 	emit_cmp();  // double_operand_instructions
+	emit_misc_operations();
 
 	// TODO:
 	// - double_operand_instructions: MOV
