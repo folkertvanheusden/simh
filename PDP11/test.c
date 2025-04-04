@@ -166,8 +166,19 @@ void init_stack_registers()
 	STACKFILE[0] = STACKFILE[1] = STACKFILE[2] = STACKFILE[3] = 010000;
 }
 
-void emit_branch_instructions(json_t *const target, int *const id)
+void dump_json(const char *const filename, json_t *const j)
 {
+	FILE *fh = fopen(filename, "w");
+	json_dumpf(j, fh, JSON_INDENT(1));
+	fclose(fh);
+
+	json_decref(j);
+}
+
+void emit_branch_instructions()
+{
+	int id = 0;
+	json_t *out = json_array();
 	printf("Branch instructions\n");
 	for(int group=0; group<2; group++) {
 		for(int bt=0; bt<8; bt++) {
@@ -196,17 +207,20 @@ void emit_branch_instructions(json_t *const target, int *const id)
 
 					PSW = psw_val;
 
-					json_t *obj = generate_test(instr, id, mem, 1);
+					json_t *obj = generate_test(instr, &id, mem, 1);
 					if (obj)
-						json_array_append_new(target, obj);
+						json_array_append_new(out, obj);
 				}
 			}
 		}
 	}
+	dump_json("pdp1170-valtest-COND-BRANCHES.json", out);
 }
 
-void emit_condition_sets(json_t *const target, int *const id)
+void emit_condition_sets()
 {
+	int id = 0;
+	json_t *out = json_array();
 	printf("Condition set instructions\n");
 	for(int condition=0; condition<16; condition++) {
 		uint16_t instr = 0240 + condition;
@@ -226,15 +240,18 @@ void emit_condition_sets(json_t *const target, int *const id)
 
 			PSW = psw_val;
 
-			json_t *obj = generate_test(instr, id, mem, 1);
+			json_t *obj = generate_test(instr, &id, mem, 1);
 			if (obj)
-				json_array_append_new(target, obj);
+				json_array_append_new(out, obj);
 		}
 	}
+	dump_json("pdp1170-valtest-CONDITIONS.json", out);
 }
 
-void emit_add_sub(json_t *const target, int *const id)
+void emit_add_sub()
 {
+	int id = 0;
+	json_t *out = json_array();
 	int count = 0;
 	int total = n_test_values * n_test_values * 2;
 	time_t start = time(NULL);
@@ -262,35 +279,25 @@ void emit_add_sub(json_t *const target, int *const id)
 
 				PSW = 0;
 
-				json_t *obj = generate_test(instr, id, mem, 1);
+				json_t *obj = generate_test(instr, &id, mem, 1);
 				if (obj)
-					json_array_append_new(target, obj);
+					json_array_append_new(out, obj);
 			}
 
 			printf("%.2f%% %f      \r", count * 100 / (double)total, total / (double)count * (time(NULL) - start));
 			fflush(NULL);
 		}
 	}
+	dump_json("pdp1170-valtest-ADD_SUB.json", out);
 }
 
 void produce_validation_tests()
 {
-	json_t *out = json_array();
+	srand(123);  // for reproducability
 
 	generate_test_values();
 
-	srand(123);  // for reproducability
-
-	int id = 0;
-
-	// TODO FIXME opslaan per type in json, id als md5?
-//	emit_branch_instructions(out, &id);
-
-//	emit_condition_sets(out, &id);
-
-	emit_add_sub(out, &id);
-
-	FILE *fh = fopen("testset.json", "w");
-	json_dumpf(out, fh, JSON_INDENT(2));
-	fclose(fh);
+	emit_branch_instructions();
+	emit_condition_sets();
+	emit_add_sub();
 }
