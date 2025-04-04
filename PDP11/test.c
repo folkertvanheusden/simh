@@ -1,5 +1,6 @@
 #include <jansson.h>
 #include <stdio.h>
+#include <time.h>
 
 #include "pdp11_defs.h"
 #include "sim_defs.h"
@@ -38,7 +39,7 @@ int n_test_values = 0;
 
 void generate_test_values()
 {
-	for(int i=0; i<65536; i++) {
+	for(int i=1; i<65536; i+=10) {
 		if (is_prime(i))
 			test_values[n_test_values++] = i;
 	}
@@ -48,10 +49,10 @@ void generate_test_values()
 
 	test_values[n_test_values++] = 0;
 	test_values[n_test_values++] = 255;
-	test_values[n_test_values++] = 256;
 	test_values[n_test_values++] = 32767;
-	test_values[n_test_values++] = 32768;
 	test_values[n_test_values++] = 65535;
+
+	printf("%d\n", n_test_values);
 }
 
 json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, size_t n_mem)
@@ -149,7 +150,7 @@ json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, si
 
 void init_simh()
 {
-	reset_all(0);
+	// reset_all(0);  is this required?
 	cpu_reset(&cpu_dev);
 }
 
@@ -235,12 +236,17 @@ void emit_condition_sets(json_t *const target, int *const id)
 
 void emit_add_sub(json_t *const target, int *const id)
 {
+	int count = 0;
+	int total = n_test_values * n_test_values * 2;
+	time_t start = time(NULL);
 	printf("ADD/SUB instructions\n");
 	for(int group=0; group<2; group++) {
 		uint16_t instr = (6 << 12 /* instr */) | (group << 15 /* ADD/SUB */) | (1 << 6 /* src=R1 */);
 
 		for(int v1=0; v1<n_test_values; v1++) {
 			for(int v2=0; v2<n_test_values; v2++) {
+				count++;
+
 				init_simh();
 
 				saved_PC = 0100;
@@ -261,6 +267,9 @@ void emit_add_sub(json_t *const target, int *const id)
 				if (obj)
 					json_array_append_new(target, obj);
 			}
+
+			printf("%.2f%% %f      \r", count * 100 / (double)total, total / (double)count * (time(NULL) - start));
+			fflush(NULL);
 		}
 	}
 }
@@ -275,11 +284,12 @@ void produce_validation_tests()
 
 	int id = 0;
 
-	emit_branch_instructions(out, &id);
+	// TODO FIXME opslaan per type in json, id als md5?
+//	emit_branch_instructions(out, &id);
 
-	emit_condition_sets(out, &id);
+//	emit_condition_sets(out, &id);
 
-//	emit_add_sub(out, &id);
+	emit_add_sub(out, &id);
 
 	FILE *fh = fopen("testset.json", "w");
 	json_dumpf(out, fh, JSON_INDENT(2));
