@@ -312,6 +312,107 @@ void emit_add_sub_c()
 	dump_json(filename, out);
 }
 
+void emit_cmp()
+{
+	printf("CMP instructions\n");
+	const char *const filename = "pdp1170-valtest-CMP.json";
+	if (file_exist(filename))
+		return;
+	int id = 0;
+	json_t *out = json_array();
+	int count = 0;
+	int total = n_test_values * n_test_values * 2 * 2;
+	time_t start = time(NULL);
+	for(int group=0; group<2; group++) {
+		uint16_t instr = 0;
+		int      word  = group & 1;
+
+		if (group == 0 || group == 1)
+			instr = (2 << 12 /* instr */) | (word << 15 /* CMPb/CMPw */) | (1 << 6 /* src=R1 */);
+
+		for(int v1=0; v1<n_test_values; v1++) {
+			for(int v2=0; v2<n_test_values; v2++) {
+				for(int psw_val=0; psw_val<2; psw_val++) {
+					count++;
+
+					init_simh();
+
+					saved_PC = 0100;
+
+					randomize_registers_all_values();
+					REGFILE[0][0] = REGFILE[0][1] = v1;
+					REGFILE[1][0] = REGFILE[1][1] = v2;
+
+					init_stack_registers();
+
+					struct mem_t mem[1] = {
+						{ 0100, instr }
+					};
+
+					PSW = psw_val;
+
+					json_t *obj = generate_test(instr, &id, mem, 1);
+					if (obj)
+						json_array_append_new(out, obj);
+				}
+			}
+
+			printf("%.2f%% %f      \r", count * 100 / (double)total, total / (double)count * (time(NULL) - start));
+			fflush(NULL);
+		}
+	}
+	dump_json(filename, out);
+}
+
+void emit_add_double_oper_instr()
+{
+	printf("addition double operand instructions\n");
+	const char *const filename = "pdp1170-valtest-DOUB_OPER-INSTR.json";
+	if (file_exist(filename))
+		return;
+	int id = 0;
+	json_t *out = json_array();
+	int count = 0;
+	int total = n_test_values * n_test_values * (8 - 2);
+	time_t start = time(NULL);
+	for(int group=0; group<8; group++) {
+		uint16_t instr = (7 << 12) | (group << 9 /* instr */) | (1 << 6 /* src=R1 */);
+
+		if (group == 5 || group == 6)
+			continue;
+
+		for(int v1=0; v1<n_test_values; v1++) {
+			for(int v2=0; v2<n_test_values; v2++) {
+				count++;
+
+				init_simh();
+
+				saved_PC = 0100;
+
+				randomize_registers_all_values();
+				REGFILE[0][0] = REGFILE[0][1] = v1;
+				REGFILE[1][0] = REGFILE[1][1] = v2;
+
+				init_stack_registers();
+
+				struct mem_t mem[1] = {
+					{ 0100, instr }
+				};
+
+				PSW = 0;
+
+				json_t *obj = generate_test(instr, &id, mem, 1);
+				if (obj)
+					json_array_append_new(out, obj);
+			}
+
+			printf("%.2f%% %f      \r", count * 100 / (double)total, total / (double)count * (time(NULL) - start));
+			fflush(NULL);
+		}
+	}
+	dump_json(filename, out);
+}
+
 void emit_bit_instructions()
 {
 	printf("bit instructions\n");
@@ -372,4 +473,6 @@ void produce_validation_tests()
 	emit_condition_sets();
 	emit_add_sub_c();
 	emit_bit_instructions();
+	emit_cmp();
+	emit_add_double_oper_instr();
 }
