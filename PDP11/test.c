@@ -40,7 +40,7 @@ int n_test_values = 0;
 
 void generate_test_values()
 {
-	for(int i=1; i<65536; i+=14) {
+	for(int i=1; i<65536; i+=28) {
 		if (is_prime(i))
 			test_values[n_test_values++] = i;
 	}
@@ -248,47 +248,57 @@ void emit_condition_sets()
 	dump_json("pdp1170-valtest-CONDITIONS.json", out);
 }
 
-void emit_add_sub()
+void emit_add_sub_c()
 {
 	int id = 0;
 	json_t *out = json_array();
 	int count = 0;
-	int total = n_test_values * n_test_values * 2;
+	int total = n_test_values * n_test_values * 4 * 2;
 	time_t start = time(NULL);
-	printf("ADD/SUB instructions\n");
-	for(int group=0; group<2; group++) {
-		uint16_t instr = (6 << 12 /* instr */) | (group << 15 /* ADD/SUB */) | (1 << 6 /* src=R1 */);
+	printf("ADD/SUB/ADC/SBC instructions\n");
+	for(int group=0; group<4; group++) {
+		uint16_t instr = 0;
+		int      word  = group & 1;
+
+		if (group == 0 || group == 1)
+			instr = (6 << 12 /* instr */) | (word << 15 /* ADD/SUB */) | (1 << 6 /* src=R1 */);
+		else if (group == 2)
+			instr = (055 << 6 /* instr */) | (word << 15 /* ADCb/ADCw */) | (1 << 6 /* src=R1 */);
+		else if (group == 3)
+			instr = (056 << 6 /* instr */) | (word << 15 /* SBCb/SBCw */) | (1 << 6 /* src=R1 */);
 
 		for(int v1=0; v1<n_test_values; v1++) {
 			for(int v2=0; v2<n_test_values; v2++) {
-				count++;
+				for(int psw_val=0; psw_val<2; psw_val++) {
+					count++;
 
-				init_simh();
+					init_simh();
 
-				saved_PC = 0100;
+					saved_PC = 0100;
 
-				randomize_registers_all_values();
-				REGFILE[0][0] = REGFILE[0][1] = v1;
-				REGFILE[1][0] = REGFILE[1][1] = v2;
+					randomize_registers_all_values();
+					REGFILE[0][0] = REGFILE[0][1] = v1;
+					REGFILE[1][0] = REGFILE[1][1] = v2;
 
-				init_stack_registers();
+					init_stack_registers();
 
-				struct mem_t mem[1] = {
-					{ 0100, instr }
-				};
+					struct mem_t mem[1] = {
+						{ 0100, instr }
+					};
 
-				PSW = 0;
+					PSW = psw_val;
 
-				json_t *obj = generate_test(instr, &id, mem, 1);
-				if (obj)
-					json_array_append_new(out, obj);
+					json_t *obj = generate_test(instr, &id, mem, 1);
+					if (obj)
+						json_array_append_new(out, obj);
+				}
 			}
 
 			printf("%.2f%% %f      \r", count * 100 / (double)total, total / (double)count * (time(NULL) - start));
 			fflush(NULL);
 		}
 	}
-	dump_json("pdp1170-valtest-ADD_SUB.json", out);
+	dump_json("pdp1170-valtest-ADD_SUB_ADC_SBC.json", out);
 }
 
 void produce_validation_tests()
@@ -299,5 +309,5 @@ void produce_validation_tests()
 
 	emit_branch_instructions();
 	emit_condition_sets();
-	emit_add_sub();
+	emit_add_sub_c();
 }
