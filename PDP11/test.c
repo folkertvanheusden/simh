@@ -18,6 +18,7 @@ extern int32 PSW;
 extern t_stat cpu_reset(DEVICE *dptr);
 extern DEVICE cpu_dev;
 extern int32 STACKFILE[4];
+extern int32 sim_interval;
 
 struct mem_t {
 	uint32_t addr;
@@ -39,7 +40,7 @@ int n_test_values = 0;
 
 void generate_test_values()
 {
-	for(int i=1; i<65536; i+=10) {
+	for(int i=1; i<65536; i+=14) {
 		if (is_prime(i))
 			test_values[n_test_values++] = i;
 	}
@@ -149,6 +150,7 @@ void init_simh()
 {
 	// reset_all(0);  is this required?
 	cpu_reset(&cpu_dev);
+	sim_interval = 32767;
 }
 
 void randomize_registers_all_values()
