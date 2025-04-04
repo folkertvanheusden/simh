@@ -469,10 +469,16 @@ void produce_validation_tests()
 
 	generate_test_values();
 
-	emit_branch_instructions();
-	emit_condition_sets();
-	emit_add_sub_c();
-	emit_bit_instructions();
-	emit_cmp();
-	emit_add_double_oper_instr();
+	emit_branch_instructions();  // conditional_branch_instructions*
+	emit_condition_sets();  // condition_code_operations*
+	emit_add_double_oper_instr();  // additional_double_operand_instructions*
+
+	emit_add_sub_c();  // double_operand_instructions, single_operand_instructions
+	emit_bit_instructions();  // double_operand_instructions
+	emit_cmp();  // double_operand_instructions
+
+	// TODO:
+	// - double_operand_instructions: MOV
+	// - single_operand_instructions
+	// ...
 }
