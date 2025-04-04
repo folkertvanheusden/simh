@@ -44,7 +44,7 @@ void generate_test_values()
 			test_values[n_test_values++] = i;
 	}
 
-	for(int i=2; i<16; i++)
+	for(int i=1; i<16; i++)
 		test_values[n_test_values++] = 1 << i;
 
 	test_values[n_test_values++] = 0;
@@ -58,9 +58,6 @@ void generate_test_values()
 json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, size_t n_mem)
 {
 	json_t *before = json_object();
-
-	reset_all(0);
-	cpu_reset(&cpu_dev);
 
 	json_object_set(before, "PC", json_integer(saved_PC));
 
