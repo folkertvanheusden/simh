@@ -523,9 +523,9 @@ void emit_misc_operations()
 	int id = 0;
 	json_t *out = json_array();
 
-	int groups[] = { 2 /* RTI */, 3 /* BPT */, 6 /* RTT */ };
+	int groups[] = { 2 /* RTI */, 6 /* RTT */ };
 
-	for(int group=0; group<3; group++) {
+	for(int group=0; group<2; group++) {
 		for(int psw_val=0; psw_val<65536; psw_val++) {
 			if ((psw_val & 0174377) != psw_val)
 				continue;
@@ -535,9 +535,7 @@ void emit_misc_operations()
 			init_simh();
 
 			saved_PC = 0100;
-
 			randomize_registers_all_values();
-
 			init_stack_registers();
 
 			struct mem_t mem[1] = {
@@ -554,11 +552,11 @@ void emit_misc_operations()
 
 	for(int group=0; group<3; group++) {
 		uint16_t instr = 0;
-		if (instr == 0)
+		if (group == 0)
 			instr = 0100 | 010;  // JMP (R0)
-		else if (instr == 1)
+		else if (group == 1)
 			instr = 04000 | 0110;  // JSR R1,(R0)
-		else if (instr == 2)
+		else if (group == 2)
 			instr = 0200 | 01;  // RTS (R1)
 
 		for(int v1=0; v1<n_test_values; v1++) {
