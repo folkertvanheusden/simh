@@ -523,28 +523,33 @@ void emit_misc_operations()
 	int id = 0;
 	json_t *out = json_array();
 
-	int groups[] = { 2, 3, 6 };
+	int groups[] = { 2 /* RTI */, 3 /* BPT */, 6 /* RTT */ };
 
 	for(int group=0; group<3; group++) {
-		uint16_t instr = groups[group];
+		for(int psw_val=0; psw_val<65536; psw_val++) {
+			if ((psw_val & 0177417) != psw_val)
+				continue;
 
-		init_simh();
+			uint16_t instr = groups[group];
 
-		saved_PC = 0100;
+			init_simh();
 
-		randomize_registers_all_values();
+			saved_PC = 0100;
 
-		init_stack_registers();
+			randomize_registers_all_values();
 
-		struct mem_t mem[1] = {
-			{ 0100, instr }
-		};
+			init_stack_registers();
 
-		PSW = 0;
+			struct mem_t mem[1] = {
+				{ 0100, instr }
+			};
 
-		json_t *obj = generate_test(instr, &id, mem, 1);
-		if (obj)
-			json_array_append_new(out, obj);
+			PSW = psw_val;
+
+			json_t *obj = generate_test(instr, &id, mem, 1);
+			if (obj)
+				json_array_append_new(out, obj);
+		}
 	}
 
 	for(int group=0; group<3; group++) {
@@ -554,7 +559,7 @@ void emit_misc_operations()
 		else if (instr == 1)
 			instr = 04000 | 0110;  // JSR R1,(R0)
 		else if (instr == 2)
-			instr = 0200 | 01;  // RET (R1)
+			instr = 0200 | 01;  // RTS (R1)
 
 		for(int v1=0; v1<n_test_values; v1++) {
 			for(int v2=0; v2<n_test_values; v2++) {
@@ -593,7 +598,7 @@ void produce_validation_tests()
 	emit_branch_instructions();  // conditional_branch_instructions*
 	emit_condition_sets();  // condition_code_operations*
 	emit_add_double_oper_instr();  // additional_double_operand_instructions*
-	emit_add_sub_c();  // double_operand_instructions, single_operand_instructions*
+	emit_add_sub_c();  // double_operand_instructions*, single_operand_instructions*
 	emit_single_operand_instructions();  // single_operand_instructions
 	emit_bit_instructions();  // double_operand_instructions
 	emit_cmp();  // double_operand_instructions
