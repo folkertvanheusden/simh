@@ -527,7 +527,7 @@ void emit_misc_operations()
 
 	for(int group=0; group<3; group++) {
 		for(int psw_val=0; psw_val<65536; psw_val++) {
-			if ((psw_val & 0177417) != psw_val)
+			if ((psw_val & 0174377) != psw_val)
 				continue;
 
 			uint16_t instr = groups[group];
