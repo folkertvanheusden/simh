@@ -325,18 +325,24 @@ void emit_add_sub_c()
 	int id = 0;
 	json_t *out = json_array();
 	for(int group=0; group<4; group++) {
-		uint16_t instr = 0;
-		int      word  = group & 1;
+		for(int word=0; word<2; word++) {
+			uint16_t instr = 0;
 
-		if (group == 0 || group == 1)
-			instr = (6 << 12 /* instr */) | (word << 15 /* ADD/SUB */) | (1 << 6 /* src=R1 */);
-		else if (group == 2)
-			instr = (055 << 6 /* instr */) | (word << 15 /* ADCb/ADCw */) | (1 << 6 /* src=R1 */);
-		else if (group == 3)
-			instr = (056 << 6 /* instr */) | (word << 15 /* SBCb/SBCw */) | (1 << 6 /* src=R1 */);
+			if (group == 0 || group == 1)
+				instr = (6 << 12 /* instr */) | (word << 15 /* ADD/SUB */) | (1 << 6 /* src=R1 */);
+			else if (group == 2)
+				instr = (055 << 6 /* instr */) | (word << 15 /* ADCb/ADCw */) | 1 /* src=R1 */;
+			else if (group == 3)
+				instr = (056 << 6 /* instr */) | (word << 15 /* SBCb/SBCw */) | 1 /* src=R1 */;
 
-		for(int psw_val=0; psw_val<2; psw_val++)
-			produce_set_register(instr, psw_val, &id, out);
+			if (group == 2 || group == 3) {
+				for(int psw_val=0; psw_val<2; psw_val++)
+					produce_set_register(instr, psw_val, &id, out);
+			}
+			else {
+				produce_set_register(instr, 0, &id, out);
+			}
+		}
 	}
 	dump_json(filename, out);
 }
