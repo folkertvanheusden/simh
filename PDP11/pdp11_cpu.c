@@ -281,13 +281,31 @@ typedef struct {
 
 struct __mem_writes {
 	int32_t addr;
-	uint16_t data;
+	uint8_t data;
 } *mem_writes;
 int n_mem_writes = 0;
 
 void init_mem_writes()
 {
 	mem_writes = (struct __mem_writes *)malloc(sizeof(struct __mem_writes) * 256);
+}
+
+void put_mem_write(uint8_t data, uint32_t pa)
+{
+	int i = 0;
+	int found = 0;
+	for(i=0; i<n_mem_writes; i++) {
+		if (mem_writes[i].addr == pa) {
+			mem_writes[i].data = data;
+			found = 1;
+			break;
+		}
+	}
+	if (found == 0) {
+		mem_writes[n_mem_writes].addr = pa;
+		mem_writes[n_mem_writes].data = data;
+		n_mem_writes++;
+	}
 }
 
 uint16 *M = NULL;                                       /* memory */
@@ -2838,23 +2856,8 @@ void reset_mem_writes()
 void PWriteW (int32 data, int32 pa)
 {
 if (ADDR_IS_MEM (pa)) {                                 /* memory address? */
-
-	int i = 0, found = 0;
-	if (data > 0xffff)
-		printf("FAIL %x\n", data);
-
-	for(i=0; i<n_mem_writes; i++) {
-		if (mem_writes[i].addr == pa) {
-			mem_writes[i].data = data;
-			found = 1;
-			break;
-		}
-	}
-	if (found == 0) {
-		mem_writes[n_mem_writes].addr = pa;
-		mem_writes[n_mem_writes].data = data;
-		n_mem_writes++;
-	}
+	put_mem_write(data, pa);
+	put_mem_write(data >> 8, pa + 1);
 
     WrMemW (pa, data);
     return;
@@ -2873,6 +2876,8 @@ return;
 void PWriteB (int32 data, int32 pa)
 {
 if (ADDR_IS_MEM (pa)) {                                 /* memory address? */
+	put_mem_write(data, pa);
+
     WrMemB (pa, data);
     return;
     }             
