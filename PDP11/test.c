@@ -23,8 +23,9 @@ extern int32 sim_interval;
 
 struct __mem_writes {
         int32_t addr;
-        uint16_t data;
+        uint8_t data;
 };
+
 extern struct __mem_writes *mem_writes;
 extern int n_mem_writes;
 extern void reset_mem_writes();
@@ -88,8 +89,15 @@ json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, si
 		json_t *put_mem_i_0 = json_object();
 		PWriteW(mem[i].value, mem[i].addr);
 
+		if (mem[i].addr & 1)
+			printf("FAIL\n");
+
 		sprintf(buffer, "%06o", mem[i].addr);
-		json_object_set(put_mem_i_0, buffer, json_integer(mem[i].value));
+		json_object_set(put_mem_i_0, buffer, json_integer(mem[i].value & 255));
+		json_array_append_new(memory_i, put_mem_i_0);
+
+		sprintf(buffer, "%06o", mem[i].addr + 1);
+		json_object_set(put_mem_i_0, buffer, json_integer(mem[i].value >> 8));
 		json_array_append_new(memory_i, put_mem_i_0);
 	}
 

@@ -290,7 +290,7 @@ void init_mem_writes()
 	mem_writes = (struct __mem_writes *)malloc(sizeof(struct __mem_writes) * 256);
 }
 
-void put_mem_write(uint8_t data, uint32_t pa)
+void put_mem_write(uint8_t data, int32_t pa)
 {
 	int i = 0;
 	int found = 0;
