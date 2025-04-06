@@ -2436,6 +2436,7 @@ while (reason == 0)  {
         else setTRAP (TRAP_ILL);
         break;                                          /* end case 017 */
         }                                               /* end switch op */
+    if (trap_req == 0)
     break;
     }                                                   /* end main loop */
 
