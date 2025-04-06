@@ -168,6 +168,33 @@ void init_stack_registers()
 	STACKFILE[0] = STACKFILE[1] = STACKFILE[2] = STACKFILE[3] = 010000;
 }
 
+void produce_set_register(const uint16_t instr, const uint16_t psw, int *const id, json_t *const out)
+{
+	for(int v1=0; v1<n_test_values; v1++) {
+		for(int v2=0; v2<n_test_values; v2++) {
+			init_simh();
+
+			saved_PC = 0100;
+
+			randomize_registers_all_values();
+			REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
+			REGFILE[1][0] = REGFILE[1][1] = test_values[v2];
+
+			init_stack_registers();
+
+			struct mem_t mem[1] = {
+				{ 0100, instr }
+			};
+
+			PSW = psw;
+
+			json_t *obj = generate_test(instr, id, mem, 1);
+			if (obj)
+				json_array_append_new(out, obj);
+		}
+	}
+}
+
 void dump_json(const char *const filename, json_t *const j)
 {
 	FILE *fh = fopen(filename, "w");
@@ -185,7 +212,7 @@ void emit_branch_instructions()
 		return;
 	int id = 0;
 	json_t *out = json_array();
-	for(int group=0; group<2; group++) {
+	for(int group=0; group<2; group++) {  // word/byte
 		for(int bt=0; bt<8; bt++) {
 			if (group == 0 && bt == 0)  // SWAB
 				continue;
@@ -264,9 +291,6 @@ void emit_add_sub_c()
 		return;
 	int id = 0;
 	json_t *out = json_array();
-	int count = 0;
-	int total = n_test_values * n_test_values * 4 * 2;
-	time_t start = time(NULL);
 	for(int group=0; group<4; group++) {
 		uint16_t instr = 0;
 		int      word  = group & 1;
@@ -278,36 +302,8 @@ void emit_add_sub_c()
 		else if (group == 3)
 			instr = (056 << 6 /* instr */) | (word << 15 /* SBCb/SBCw */) | (1 << 6 /* src=R1 */);
 
-		for(int v1=0; v1<n_test_values; v1++) {
-			for(int v2=0; v2<n_test_values; v2++) {
-				for(int psw_val=0; psw_val<2; psw_val++) {
-					count++;
-
-					init_simh();
-
-					saved_PC = 0100;
-
-					randomize_registers_all_values();
-					REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
-					REGFILE[1][0] = REGFILE[1][1] = test_values[v2];
-
-					init_stack_registers();
-
-					struct mem_t mem[1] = {
-						{ 0100, instr }
-					};
-
-					PSW = psw_val;
-
-					json_t *obj = generate_test(instr, &id, mem, 1);
-					if (obj)
-						json_array_append_new(out, obj);
-				}
-			}
-
-			printf("%.2f%% %f      \r", count * 100 / (double)total, total / (double)count * (time(NULL) - start));
-			fflush(NULL);
-		}
+		for(int psw_val=0; psw_val<2; psw_val++)
+			produce_set_register(instr, psw_val, &id, out);
 	}
 	dump_json(filename, out);
 }
@@ -369,9 +365,6 @@ void emit_cmp()
 		return;
 	int id = 0;
 	json_t *out = json_array();
-	int count = 0;
-	int total = n_test_values * n_test_values * 2 * 2;
-	time_t start = time(NULL);
 	for(int group=0; group<2; group++) {
 		uint16_t instr = 0;
 		int      word  = group & 1;
@@ -379,36 +372,8 @@ void emit_cmp()
 		if (group == 0 || group == 1)
 			instr = (2 << 12 /* instr */) | (word << 15 /* CMPb/CMPw */) | (1 << 6 /* src=R1 */);
 
-		for(int v1=0; v1<n_test_values; v1++) {
-			for(int v2=0; v2<n_test_values; v2++) {
-				for(int psw_val=0; psw_val<2; psw_val++) {
-					count++;
-
-					init_simh();
-
-					saved_PC = 0100;
-
-					randomize_registers_all_values();
-					REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
-					REGFILE[1][0] = REGFILE[1][1] = test_values[v2];
-
-					init_stack_registers();
-
-					struct mem_t mem[1] = {
-						{ 0100, instr }
-					};
-
-					PSW = psw_val;
-
-					json_t *obj = generate_test(instr, &id, mem, 1);
-					if (obj)
-						json_array_append_new(out, obj);
-				}
-			}
-
-			printf("%.2f%% %f      \r", count * 100 / (double)total, total / (double)count * (time(NULL) - start));
-			fflush(NULL);
-		}
+		for(int psw_val=0; psw_val<2; psw_val++)
+			produce_set_register(instr, psw_val, &id, out);
 	}
 	dump_json(filename, out);
 }
@@ -421,43 +386,13 @@ void emit_add_double_oper_instr()
 		return;
 	int id = 0;
 	json_t *out = json_array();
-	int count = 0;
-	int total = n_test_values * n_test_values * (8 - 2);
-	time_t start = time(NULL);
 	for(int group=0; group<8; group++) {
 		uint16_t instr = (7 << 12) | (group << 9 /* instr */) | (2 << 6 /* src=R2 */);
 
 		if (group == 5 || group == 6)
 			continue;
 
-		for(int v1=0; v1<n_test_values; v1++) {
-			for(int v2=0; v2<n_test_values; v2++) {
-				count++;
-
-				init_simh();
-
-				saved_PC = 0100;
-
-				randomize_registers_all_values();
-				REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
-				REGFILE[1][0] = REGFILE[1][1] = test_values[v2];
-
-				init_stack_registers();
-
-				struct mem_t mem[1] = {
-					{ 0100, instr }
-				};
-
-				PSW = 0;
-
-				json_t *obj = generate_test(instr, &id, mem, 1);
-				if (obj)
-					json_array_append_new(out, obj);
-			}
-
-			printf("%.2f%% %f      \r", count * 100 / (double)total, total / (double)count * (time(NULL) - start));
-			fflush(NULL);
-		}
+		produce_set_register(instr, 0, &id, out);
 	}
 	dump_json(filename, out);
 }
@@ -470,43 +405,12 @@ void emit_bit_instructions()
 		return;
 	int id = 0;
 	json_t *out = json_array();
-	int count = 0;
-	int total = n_test_values * n_test_values * 3 * 2 * 2;
-	time_t start = time(NULL);
 	for(int word=0; word<2; word++) {
 		for(int group=3; group<6; group++) {
 			uint16_t instr = (word << 15) | (group << 12) | (1 << 6 /* src=R1 */);
 
-			for(int v1=0; v1<n_test_values; v1++) {
-				for(int v2=0; v2<n_test_values; v2++) {
-					for(int psw_val=0; psw_val<2; psw_val++) {
-						count++;
-
-						init_simh();
-
-						saved_PC = 0100;
-
-						randomize_registers_all_values();
-						REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
-						REGFILE[1][0] = REGFILE[1][1] = test_values[v2];
-
-						init_stack_registers();
-
-						struct mem_t mem[1] = {
-							{ 0100, instr }
-						};
-
-						PSW = psw_val;
-
-						json_t *obj = generate_test(instr, &id, mem, 1);
-						if (obj)
-							json_array_append_new(out, obj);
-					}
-				}
-
-				printf("%.2f%% %f      \r", count * 100 / (double)total, total / (double)count * (time(NULL) - start));
-				fflush(NULL);
-			}
+			for(int psw_val=0; psw_val<2; psw_val++)
+				produce_set_register(instr, psw_val, &id, out);
 		}
 	}
 	dump_json(filename, out);
@@ -559,29 +463,7 @@ void emit_misc_operations()
 		else if (group == 2)
 			instr = 0200 | 01;  // RTS (R1)
 
-		for(int v1=0; v1<n_test_values; v1++) {
-			for(int v2=0; v2<n_test_values; v2++) {
-				init_simh();
-
-				saved_PC = 0100;
-
-				randomize_registers_all_values();
-				REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
-				REGFILE[1][0] = REGFILE[1][1] = test_values[v2];
-
-				init_stack_registers();
-
-				struct mem_t mem[1] = {
-					{ 0100, instr }
-				};
-
-				PSW = 0;
-
-				json_t *obj = generate_test(instr, &id, mem, 1);
-				if (obj)
-					json_array_append_new(out, obj);
-			}
-		}
+		produce_set_register(instr, 0, &id, out);
 	}
 
 	dump_json(filename, out);
