@@ -279,6 +279,17 @@ typedef struct {
 
 /* Global state */
 
+struct __mem_writes {
+	int32_t addr;
+	uint16_t data;
+} *mem_writes;
+int n_mem_writes = 0;
+
+void init_mem_writes()
+{
+	mem_writes = (struct __mem_writes *)malloc(sizeof(struct __mem_writes) * 256);
+}
+
 uint16 *M = NULL;                                       /* memory */
 int32 REGFILE[6][2] = { {0} };                          /* R0-R5, two sets */
 int32 STACKFILE[4] = { 0 };                             /* SP, four modes */
@@ -2780,6 +2791,7 @@ if ((va & 1) && CPUT (HAS_ODD)) {                       /* odd address? */
     ABORT (TRAP_ODD);
     }
 pa = relocW (va);                                       /* relocate */
+
 if (BPT_SUMM_WR &&
     (sim_brk_test (va & 0177777, BPT_WRVIR) ||
      sim_brk_test (pa, BPT_WRPHY)))                     /* write breakpoint? */
@@ -2818,9 +2830,21 @@ if (BPT_SUMM_WR &&
 PWriteW (data, pa);
 }
 
+void reset_mem_writes()
+{
+	n_mem_writes = 0;
+}
+
 void PWriteW (int32 data, int32 pa)
 {
 if (ADDR_IS_MEM (pa)) {                                 /* memory address? */
+
+	if (data > 0xffff)
+		printf("FAIL %x\n", data);
+	mem_writes[n_mem_writes].addr = pa;
+	mem_writes[n_mem_writes].data = data;
+	n_mem_writes++;
+
     WrMemW (pa, data);
     return;
     }

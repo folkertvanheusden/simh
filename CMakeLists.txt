@@ -94,6 +94,7 @@ if (NOT CMAKE_CONFIGURATION_TYPES)
         message(STATUS "CMAKE_BUILD_TYPE is ${CMAKE_BUILD_TYPE}")
     endif (NOT CMAKE_BUILD_TYPE)
 endif ()
+set(CMAKE_BUILD_TYPE "RelWithDebInfo")
 
 # SIMH_SYSTEM_ID: Roughly analogous to the autoconf system triple. Used (almost exclusively)
 # as part of the dependencies' top-level directory name.

@@ -21,6 +21,15 @@ extern DEVICE cpu_dev;
 extern int32 STACKFILE[4];
 extern int32 sim_interval;
 
+struct __mem_writes {
+        int32_t addr;
+        uint16_t data;
+};
+extern struct __mem_writes *mem_writes;
+extern int n_mem_writes;
+extern void reset_mem_writes();
+extern void init_mem_writes();
+
 struct mem_t {
 	uint32_t addr;
 	uint16_t value;
@@ -123,12 +132,12 @@ json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, si
 
 	json_t *memory_o = json_array();
 
-	for(size_t i=0; i<n_mem; i++) {
+	for(int i=0; i<n_mem_writes; i++) {
 		char buffer[16];
-		sprintf(buffer, "%06o", mem[i].addr);
+		sprintf(buffer, "%06o", mem_writes[i].addr);
 
 		json_t *get_mem = json_object();
-		json_object_set(get_mem, buffer, json_integer(PReadW(mem[i].addr)));
+		json_object_set(get_mem, buffer, json_integer(mem_writes[i].data));
 		json_array_append_new(memory_o, get_mem);
 	}
 
@@ -153,6 +162,8 @@ void init_simh()
 	// reset_all(0);  is this required?
 	cpu_reset(&cpu_dev);
 	sim_interval = 32767;
+
+	reset_mem_writes();
 }
 
 void randomize_registers_all_values()
@@ -544,6 +555,8 @@ void emit_misc_operations()
 void produce_validation_tests()
 {
 	srand(123);  // for reproducability
+
+	init_mem_writes();
 
 	generate_test_values();
 
