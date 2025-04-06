@@ -467,52 +467,78 @@ void emit_misc_operations()
 	printf("misc instructions\n");
 
 	const char *const filename = "pdp1170-valtest-MISC.json";
-	if (file_exist(filename))
-		return;
+	if (file_exist(filename) == 0) {
+		int id = 0;
+		json_t *out = json_array();
 
-	int id = 0;
-	json_t *out = json_array();
+		int groups[] = { 2 /* RTI */, 6 /* RTT */ };
 
-	int groups[] = { 2 /* RTI */, 6 /* RTT */ };
+		for(int group=0; group<2; group++) {
+			for(int psw_val=0; psw_val<65536; psw_val++) {
+				if ((psw_val & 0174377) != psw_val)
+					continue;
 
-	for(int group=0; group<2; group++) {
-		for(int psw_val=0; psw_val<65536; psw_val++) {
-			if ((psw_val & 0174377) != psw_val)
-				continue;
+				uint16_t instr = groups[group];
 
-			uint16_t instr = groups[group];
+				init_simh();
 
-			init_simh();
+				saved_PC = 0100;
+				randomize_registers_all_values();
+				init_stack_registers();
 
-			saved_PC = 0100;
-			randomize_registers_all_values();
-			init_stack_registers();
+				struct mem_t mem[1] = {
+					{ 0100, instr }
+				};
 
-			struct mem_t mem[1] = {
-				{ 0100, instr }
-			};
+				PSW = psw_val;
 
-			PSW = psw_val;
-
-			json_t *obj = generate_test(instr, &id, mem, 1);
-			if (obj)
-				json_array_append_new(out, obj);
+				json_t *obj = generate_test(instr, &id, mem, 1);
+				if (obj)
+					json_array_append_new(out, obj);
+			}
 		}
+
+		for(int group=0; group<3; group++) {
+			uint16_t instr = 0;
+			if (group == 0)
+				instr = 0100 | 010;  // JMP (R0)
+			else if (group == 1)
+				instr = 04000 | 0110;  // JSR R1,(R0)
+			else if (group == 2)
+				instr = 0200 | 01;  // RTS (R1)
+
+			produce_set_register(instr, 0, &id, out);
+		}
+
+		dump_json(filename, out);
 	}
 
-	for(int group=0; group<3; group++) {
-		uint16_t instr = 0;
-		if (group == 0)
-			instr = 0100 | 010;  // JMP (R0)
-		else if (group == 1)
-			instr = 04000 | 0110;  // JSR R1,(R0)
-		else if (group == 2)
-			instr = 0200 | 01;  // RTS (R1)
+	// TRAP
+	const char *const filename2 = "pdp1170-valtest-MISC2.json";
+	if (file_exist(filename2) == 0) {
+		int id = 0;
+		json_t *out = json_array();
 
-		produce_set_register(instr, 0, &id, out);
+		uint16_t instr = 0104420;  // TRAP #020
+
+		init_simh();
+
+		saved_PC = 0100;
+		randomize_registers_all_values();
+		init_stack_registers();
+
+		struct mem_t mem[1] = {
+			{ 0100, instr }
+		};
+
+		PSW = 012;
+
+		json_t *obj = generate_test(instr, &id, mem, 1);
+		if (obj)
+			json_array_append_new(out, obj);
+
+		dump_json(filename2, out);
 	}
-
-	dump_json(filename, out);
 }
 
 void produce_validation_tests()
