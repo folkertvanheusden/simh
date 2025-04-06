@@ -441,13 +441,15 @@ void emit_bit_instructions()
 		int id = 0;
 		json_t *out = json_array();
 		for(int word=0; word<2; word++) {
-			uint16_t instr = (word << 15) | (group << 12) | 011 /* target is '(R1)' */;
+			uint16_t instr = (word << 15) | (group << 12) | (1 << 6 /* src=R1 */);
 
 			for(int psw_val=0; psw_val<2; psw_val++) {
 				produce_set_register(instr, psw_val, &id, out);
 
-				if (group == 4 || group == 5)
-					produce_set_register_indirect(instr, psw_val, &id, out);
+				if (group == 4 || group == 5) {
+					uint16_t instr2 = (word << 15) | (group << 12) | 011 /* target is '(R1)' */;
+					produce_set_register_indirect(instr2, psw_val, &id, out);
+				}
 			}
 		}
 		dump_json(filename, out);
