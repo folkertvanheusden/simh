@@ -2839,11 +2839,22 @@ void PWriteW (int32 data, int32 pa)
 {
 if (ADDR_IS_MEM (pa)) {                                 /* memory address? */
 
+	int i = 0, found = 0;
 	if (data > 0xffff)
 		printf("FAIL %x\n", data);
-	mem_writes[n_mem_writes].addr = pa;
-	mem_writes[n_mem_writes].data = data;
-	n_mem_writes++;
+
+	for(i=0; i<n_mem_writes; i++) {
+		if (mem_writes[i].addr == pa) {
+			mem_writes[i].data = data;
+			found = 1;
+			break;
+		}
+	}
+	if (found == 0) {
+		mem_writes[n_mem_writes].addr = pa;
+		mem_writes[n_mem_writes].data = data;
+		n_mem_writes++;
+	}
 
     WrMemW (pa, data);
     return;
