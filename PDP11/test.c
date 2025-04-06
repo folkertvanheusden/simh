@@ -195,6 +195,39 @@ void produce_set_register(const uint16_t instr, const uint16_t psw, int *const i
 	}
 }
 
+void produce_set_register_indirect(const uint16_t instr, const uint16_t psw, int *const id, json_t *const out)
+{
+	if (((instr >> 3) & 7) != 1 || (instr & 7) != 1) {
+		printf("Not an R1 target!");
+		return;
+	}
+
+	for(int v1=0; v1<n_test_values; v1++) {
+		for(int v2=0; v2<n_test_values; v2++) {
+			init_simh();
+
+			saved_PC = 0100;
+
+			randomize_registers_all_values();
+			REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
+			REGFILE[1][0] = REGFILE[1][1] = 01002;
+
+			init_stack_registers();
+
+			struct mem_t mem[2] = {
+				{ 0100, instr },
+				{ 01002, test_values[v2] }
+			};
+
+			PSW = psw;
+
+			json_t *obj = generate_test(instr, id, mem, 2);
+			if (obj)
+				json_array_append_new(out, obj);
+		}
+	}
+}
+
 void dump_json(const char *const filename, json_t *const j)
 {
 	FILE *fh = fopen(filename, "w");
@@ -400,20 +433,25 @@ void emit_add_double_oper_instr()
 void emit_bit_instructions()
 {
 	printf("bit instructions\n");
-	const char *const filename = "pdp1170-valtest-BIT-INSTRUCTIONS.json";
-	if (file_exist(filename))
-		return;
-	int id = 0;
-	json_t *out = json_array();
-	for(int word=0; word<2; word++) {
-		for(int group=3; group<6; group++) {
-			uint16_t instr = (word << 15) | (group << 12) | (1 << 6 /* src=R1 */);
+	for(int group=3; group<6; group++) {
+		char filename[64];
+		sprintf(filename, "pdp1170-valtest-BIT-INSTRUCTIONS-%d.json", group);
+		if (file_exist(filename))
+			return;
+		int id = 0;
+		json_t *out = json_array();
+		for(int word=0; word<2; word++) {
+			uint16_t instr = (word << 15) | (group << 12) | 011 /* target is '(R1)' */;
 
-			for(int psw_val=0; psw_val<2; psw_val++)
+			for(int psw_val=0; psw_val<2; psw_val++) {
 				produce_set_register(instr, psw_val, &id, out);
+
+				if (group == 4 || group == 5)
+					produce_set_register_indirect(instr, psw_val, &id, out);
+			}
 		}
+		dump_json(filename, out);
 	}
-	dump_json(filename, out);
 }
 
 void emit_misc_operations()
