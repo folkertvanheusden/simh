@@ -468,7 +468,7 @@ void emit_bit_instructions()
 		char filename[64];
 		sprintf(filename, "pdp1170-valtest-BIT-INSTRUCTIONS-%d.json", group);
 		if (file_exist(filename))
-			return;
+			continue;
 		int id = 0;
 		json_t *out = json_array();
 		for(int word=0; word<2; word++) {
