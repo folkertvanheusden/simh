@@ -924,8 +924,7 @@ while (reason == 0)  {
             }                                           /* end else t */
         if (trapea == 0) {                              /* nothing to do? */
             trap_req = calc_ints (ipl, 0);              /* recalculate */
-	    break;
-            //continue;                                   /* back to fetch */
+            continue;                                   /* back to fetch */
             }                                           /* end if trapea */
 
 /* Process a trap or interrupt
@@ -975,8 +974,7 @@ while (reason == 0)  {
         if ((cm == MD_KER) && (SP < (STKLIM + STKL_Y)) &&
             (trapnum != TRAP_V_RED) && (trapnum != TRAP_V_YEL))
             set_stack_trap (SP);
-	break;
-        //continue;                                       /* end if traps */
+        continue;                                       /* end if traps */
         }
 
 /* Fetch and decode next instruction */

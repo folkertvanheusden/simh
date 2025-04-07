@@ -85,19 +85,20 @@ json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, si
 	json_t *memory_i = json_array();
 
 	for(size_t i=0; i<n_mem; i++) {
-		char buffer[16];
+		char buffer1[16];
+		char buffer2[16];
 		json_t *put_mem_i_0 = json_object();
 		PWriteW(mem[i].value, mem[i].addr);
 
 		if (mem[i].addr & 1)
 			printf("FAIL\n");
 
-		sprintf(buffer, "%06o", mem[i].addr);
-		json_object_set(put_mem_i_0, buffer, json_integer(mem[i].value & 255));
+		sprintf(buffer1, "%06o", mem[i].addr);
+		json_object_set(put_mem_i_0, buffer1, json_integer(mem[i].value & 255));
 		json_array_append_new(memory_i, put_mem_i_0);
 
-		sprintf(buffer, "%06o", mem[i].addr + 1);
-		json_object_set(put_mem_i_0, buffer, json_integer(mem[i].value >> 8));
+		sprintf(buffer2, "%06o", mem[i].addr + 1);
+		json_object_set(put_mem_i_0, buffer2, json_integer(mem[i].value >> 8));
 		json_array_append_new(memory_i, put_mem_i_0);
 	}
 
@@ -503,15 +504,17 @@ void emit_misc_operations()
 
 				saved_PC = 0100;
 				randomize_registers_all_values();
-				init_stack_registers();
+				STACKFILE[0] = STACKFILE[1] = STACKFILE[2] = STACKFILE[3] = 07774;
 
-				struct mem_t mem[1] = {
-					{ 0100, instr }
+				struct mem_t mem[3] = {
+					{ 0100, instr },
+					{ 07776, 01234 },
+					{ 07774, 06420 }
 				};
 
 				PSW = psw_val;
 
-				json_t *obj = generate_test(instr, &id, mem, 1);
+				json_t *obj = generate_test(instr, &id, mem, 3);
 				if (obj)
 					json_array_append_new(out, obj);
 			}
