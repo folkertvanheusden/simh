@@ -579,7 +579,7 @@ void emit_mov()
 
 		uint16_t test_vals[] = { 0, 127, 128, 255, 256, 65535 };
 
-		for(int i=0; i<12; i++) {
+		for(int i=0; i<24; i++) {
 			init_simh();
 			saved_PC = 0100;
 			randomize_registers_all_values();
@@ -594,8 +594,17 @@ void emit_mov()
 				{ 0110, 0110001  }
 			};
 
-			if (i >= 6)
+			int set = i / 6;
+			if (set == 1)
 				mem[4].value = 0010001;
+			else if (set == 2) {
+				mem[3].value = 0002000;
+				mem[4].value = 0110011;
+			}
+			else if (set == 3) {
+				mem[3].value = 0002000;
+				mem[4].value = 0010011;
+			}
 
 			json_t *obj = generate_test(&id, mem, 5, 3);
 			if (obj)
