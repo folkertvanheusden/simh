@@ -627,6 +627,40 @@ void emit_mov()
 				json_array_append_new(out, obj);
 		}
 
+		for(int i=0; i<24; i++) {
+			init_simh();
+			saved_PC = 0100;
+			randomize_registers_all_values();
+			init_stack_registers();
+			PSW = 0;
+
+			struct mem_t mem[7] = {
+				{ 0100, 012700  },
+				{ 0102, test_vals[i % 6] },
+				{ 0104, 012701 },
+				{ 0106, 02000 },
+				{ 0110, 0110051 },
+				{ 01776, 03000 },
+				{ 03000, 0 }
+			};
+
+			int set = i / 6;
+			if (set == 1)
+				mem[4].value = 0010051;
+			else if (set == 2) {
+				mem[4].value = 0010031;
+				mem[5].addr = 02000;
+			}
+			else if (set == 3) {
+				mem[4].value = 0110031;
+				mem[5].addr = 02000;
+			}
+
+			json_t *obj = generate_test(&id, mem, 7, 3);
+			if (obj)
+				json_array_append_new(out, obj);
+		}
+
 		dump_json(filename, out);
 	}
 }
