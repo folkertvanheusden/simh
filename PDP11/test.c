@@ -71,7 +71,7 @@ void generate_test_values()
 	test_values[n_test_values++] = 65535;
 }
 
-json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, size_t n_mem)
+json_t *generate_test(int *const id, struct mem_t *mem, size_t n_mem)
 {
 	json_t *before = json_object();
 
@@ -88,6 +88,7 @@ json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, si
 		char buffer1[16];
 		char buffer2[16];
 		json_t *put_mem_i_0 = json_object();
+		json_t *put_mem_i_1 = json_object();
 		PWriteW(mem[i].value, mem[i].addr);
 
 		if (mem[i].addr & 1)
@@ -98,8 +99,8 @@ json_t *generate_test(uint16_t instruction, int *const id, struct mem_t *mem, si
 		json_array_append_new(memory_i, put_mem_i_0);
 
 		sprintf(buffer2, "%06o", mem[i].addr + 1);
-		json_object_set(put_mem_i_0, buffer2, json_integer(mem[i].value >> 8));
-		json_array_append_new(memory_i, put_mem_i_0);
+		json_object_set(put_mem_i_1, buffer2, json_integer(mem[i].value >> 8));
+		json_array_append_new(memory_i, put_mem_i_1);
 	}
 
 	json_object_set(before, "memory", memory_i);
@@ -208,7 +209,7 @@ void produce_set_register(const uint16_t instr, const uint16_t psw, int *const i
 
 			PSW = psw;
 
-			json_t *obj = generate_test(instr, id, mem, 1);
+			json_t *obj = generate_test(id, mem, 1);
 			if (obj)
 				json_array_append_new(out, obj);
 		}
@@ -241,7 +242,7 @@ void produce_set_register_indirect(const uint16_t instr, const uint16_t psw, int
 
 			PSW = psw;
 
-			json_t *obj = generate_test(instr, id, mem, 2);
+			json_t *obj = generate_test(id, mem, 2);
 			if (obj)
 				json_array_append_new(out, obj);
 		}
@@ -292,7 +293,7 @@ void emit_branch_instructions()
 
 					PSW = psw_val;
 
-					json_t *obj = generate_test(instr, &id, mem, 1);
+					json_t *obj = generate_test(&id, mem, 1);
 					if (obj)
 						json_array_append_new(out, obj);
 				}
@@ -328,7 +329,7 @@ void emit_condition_sets()
 
 			PSW = psw_val;
 
-			json_t *obj = generate_test(instr, &id, mem, 1);
+			json_t *obj = generate_test(&id, mem, 1);
 			if (obj)
 				json_array_append_new(out, obj);
 		}
@@ -407,7 +408,7 @@ void emit_single_operand_instructions()
 
 				PSW = psw_val;
 
-				json_t *obj = generate_test(instr, &id, mem, 1);
+				json_t *obj = generate_test(&id, mem, 1);
 				if (obj)
 					json_array_append_new(out, obj);
 			}
@@ -514,7 +515,7 @@ void emit_misc_operations()
 
 				PSW = psw_val;
 
-				json_t *obj = generate_test(instr, &id, mem, 3);
+				json_t *obj = generate_test(&id, mem, 3);
 				if (obj)
 					json_array_append_new(out, obj);
 			}
@@ -555,11 +556,46 @@ void emit_misc_operations()
 
 		PSW = 012;
 
-		json_t *obj = generate_test(instr, &id, mem, 1);
+		json_t *obj = generate_test(&id, mem, 1);
 		if (obj)
 			json_array_append_new(out, obj);
 
 		dump_json(filename2, out);
+	}
+}
+
+void emit_mov()
+{
+	printf("mov instructions\n");
+
+	const char *const filename = "pdp1170-valtest-MOV.json";
+	if (file_exist(filename) == 0) {
+		int id = 0;
+		json_t *out = json_array();
+
+		uint16_t test_vals[] = { 0, 127, 128, 255, 256, 65535 };
+
+		for(int i=0; i<6; i++) {
+			init_simh();
+			saved_PC = 0100;
+			randomize_registers_all_values();
+			init_stack_registers();
+			PSW = 0;
+
+			struct mem_t mem[5] = {
+				{ 0100, 012700   },
+				{ 0102, test_vals[i] },
+				{ 0104, 012701   },
+				{ 0106, 0        },
+				{ 0110, 0110001  }
+			};
+
+			json_t *obj = generate_test(&id, mem, 5);
+			if (obj)
+				json_array_append_new(out, obj);
+		}
+
+		dump_json(filename, out);
 	}
 }
 
@@ -579,6 +615,7 @@ void produce_validation_tests()
 	emit_bit_instructions();  // double_operand_instructions
 	emit_cmp();  // double_operand_instructions
 	emit_misc_operations();
+	emit_mov();
 
 	// TODO:
 	// - double_operand_instructions: MOV
