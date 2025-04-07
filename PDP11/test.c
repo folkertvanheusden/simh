@@ -343,30 +343,17 @@ void emit_condition_sets()
 
 void emit_add_sub_c()
 {
-	printf("ADD/SUB/ADC/SBC instructions\n");
-	const char *const filename = "pdp1170-valtest-ADD_SUB_ADC_SBC.json";
+	printf("ADD/SUB instructions\n");
+	const char *const filename = "pdp1170-valtest-ADD_SUB.json";
 	if (file_exist(filename))
 		return;
 	int id = 0;
 	json_t *out = json_array();
-	for(int group=0; group<4; group++) {
+	for(int group=0; group<2; group++) {
 		for(int word=0; word<2; word++) {
-			uint16_t instr = 0;
+			uint16_t instr = (6 << 12 /* instr */) | (word << 15 /* ADD/SUB */) | (1 << 6 /* src=R1 */);
 
-			if (group == 0 || group == 1)
-				instr = (6 << 12 /* instr */) | (word << 15 /* ADD/SUB */) | (1 << 6 /* src=R1 */);
-			else if (group == 2)
-				instr = (055 << 6 /* instr */) | (word << 15 /* ADCb/ADCw */) | 1 /* src=R1 */;
-			else if (group == 3)
-				instr = (056 << 6 /* instr */) | (word << 15 /* SBCb/SBCw */) | 1 /* src=R1 */;
-
-			if (group == 2 || group == 3) {
-				for(int psw_val=0; psw_val<2; psw_val++)
-					produce_set_register(instr, psw_val, &id, out);
-			}
-			else {
-				produce_set_register(instr, 0, &id, out);
-			}
+			produce_set_register(instr, 0, &id, out);
 		}
 	}
 	dump_json(filename, out);
@@ -375,49 +362,60 @@ void emit_add_sub_c()
 void emit_single_operand_instructions()
 {
 	printf("single operand instructions\n");
-	int groups[] = { 00001, 00003, 00050, 01050, 00051, 01051, 00052, 01052, 00053, 01053, 00054, 01054, 00057, 01057, 00060, 01060, 00061, 01061, 00062, 01062, 00063, 01063, 00067, -1 };
+	int groups[] = { 00001, 00003, 00050, 01050, 00051, 01051, 00052, 01052, 00053, 01053, 00054, 01054, 00055, 01055, 00056, 01056, 00057, 01057, 00060, 01060, 00061, 01061, 00062, 01062, 00063, 01063, 00067, -1 };
 
-	for(int group=0; group<23; group++) {
-		char filename[128] = { 0 };
-		sprintf(filename, "pdp1170-valtest-SINGLE_OPERAND-%o.json", groups[group]);
-		if (file_exist(filename))
-			continue;
-		printf("%s       \r", filename);
-		fflush(NULL);
+	for(int dst=0; dst<2; dst++) {
+		for(int group=0; group<27; group++) {
+			char filename[128] = { 0 };
+			sprintf(filename, "pdp1170-valtest-SINGLE_OPERAND-%o-%d.json", groups[group], dst);
+			if (file_exist(filename))
+				continue;
+			printf("%s       \r", filename);
+			fflush(NULL);
 
-		int id = 0;
-		json_t *out = json_array();
+			int id = 0;
+			json_t *out = json_array();
 
-		uint16_t instr = 0;
+			uint16_t instr = 0;
 
-		if (groups[group] == 00001)  // JMP can't jump to a register
-			instr = (groups[group] << 6) | 010;  // (R0)
-		else
-			instr = (groups[group] << 6) | 001;  // R0
+			if (groups[group] == 00001 || dst == 1)  // JMP can't jump to a register
+				instr = (groups[group] << 6) | 010;  // (R0)
+			else
+				instr = (groups[group] << 6) | 001;  // R0
 
-		for(int v1=0; v1<n_test_values; v1++) {
-			for(int psw_val=0; psw_val<2; psw_val++) {
-				init_simh();
+			for(int v1=0; v1<n_test_values; v1++) {
+				for(int psw_val=0; psw_val<2; psw_val++) {
+					init_simh();
 
-				saved_PC = 0100;
+					saved_PC = 0100;
 
-				randomize_registers_all_values();
-				REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
+					randomize_registers_all_values();
+					init_stack_registers();
 
-				init_stack_registers();
+					PSW = psw_val;
 
-				struct mem_t mem[1] = {
-					{ 0100, instr }
-				};
+					struct mem_t mem[2] = {
+						{ 0100, instr },
+						{ 02000, test_values[v1] }
+					};
 
-				PSW = psw_val;
+					json_t *obj = NULL;
 
-				json_t *obj = generate_test(&id, mem, 1, 1);
-				if (obj)
-					json_array_append_new(out, obj);
+					if (groups[group] == 00001 || dst == 1) {
+						REGFILE[0][0] = REGFILE[0][1] = 02000;
+						obj = generate_test(&id, mem, 2, 1);
+					}
+					else {
+						REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
+						obj = generate_test(&id, mem, 1, 1);
+					}
+
+					if (obj)
+						json_array_append_new(out, obj);
+				}
 			}
+			dump_json(filename, out);
 		}
-		dump_json(filename, out);
 	}
 }
 
