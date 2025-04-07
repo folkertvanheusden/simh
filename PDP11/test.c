@@ -71,11 +71,13 @@ void generate_test_values()
 	test_values[n_test_values++] = 65535;
 }
 
-json_t *generate_test(int *const id, struct mem_t *mem, size_t n_mem)
+json_t *generate_test(int *const id, struct mem_t *mem, size_t n_mem, int run_n_instructions)
 {
 	json_t *before = json_object();
 
 	json_object_set(before, "PC", json_integer(saved_PC));
+
+	json_object_set(before, "run-n-instructions", json_integer(run_n_instructions));
 
 	json_object_set(before, "stack-0", json_integer(STACKFILE[0]));
 	json_object_set(before, "stack-1", json_integer(STACKFILE[1]));
@@ -118,7 +120,9 @@ json_t *generate_test(int *const id, struct mem_t *mem, size_t n_mem)
 	json_object_set(before, "PSW", json_integer(PSW));
 
 	// do
-	int failed = sim_instr() != 0;
+	int failed = 0;
+	for(int k=0; k<run_n_instructions; k++)
+		failed |= sim_instr() != 0;
 
 	json_t *after = json_object();
 	json_object_set(after, "PC", json_integer(saved_PC));
@@ -209,7 +213,7 @@ void produce_set_register(const uint16_t instr, const uint16_t psw, int *const i
 
 			PSW = psw;
 
-			json_t *obj = generate_test(id, mem, 1);
+			json_t *obj = generate_test(id, mem, 1, 1);
 			if (obj)
 				json_array_append_new(out, obj);
 		}
@@ -242,7 +246,7 @@ void produce_set_register_indirect(const uint16_t instr, const uint16_t psw, int
 
 			PSW = psw;
 
-			json_t *obj = generate_test(id, mem, 2);
+			json_t *obj = generate_test(id, mem, 2, 1);
 			if (obj)
 				json_array_append_new(out, obj);
 		}
@@ -293,7 +297,7 @@ void emit_branch_instructions()
 
 					PSW = psw_val;
 
-					json_t *obj = generate_test(&id, mem, 1);
+					json_t *obj = generate_test(&id, mem, 1, 1);
 					if (obj)
 						json_array_append_new(out, obj);
 				}
@@ -329,7 +333,7 @@ void emit_condition_sets()
 
 			PSW = psw_val;
 
-			json_t *obj = generate_test(&id, mem, 1);
+			json_t *obj = generate_test(&id, mem, 1, 1);
 			if (obj)
 				json_array_append_new(out, obj);
 		}
@@ -408,7 +412,7 @@ void emit_single_operand_instructions()
 
 				PSW = psw_val;
 
-				json_t *obj = generate_test(&id, mem, 1);
+				json_t *obj = generate_test(&id, mem, 1, 1);
 				if (obj)
 					json_array_append_new(out, obj);
 			}
@@ -515,7 +519,7 @@ void emit_misc_operations()
 
 				PSW = psw_val;
 
-				json_t *obj = generate_test(&id, mem, 3);
+				json_t *obj = generate_test(&id, mem, 3, 1);
 				if (obj)
 					json_array_append_new(out, obj);
 			}
@@ -556,7 +560,7 @@ void emit_misc_operations()
 
 		PSW = 012;
 
-		json_t *obj = generate_test(&id, mem, 1);
+		json_t *obj = generate_test(&id, mem, 1, 1);
 		if (obj)
 			json_array_append_new(out, obj);
 
@@ -575,7 +579,7 @@ void emit_mov()
 
 		uint16_t test_vals[] = { 0, 127, 128, 255, 256, 65535 };
 
-		for(int i=0; i<6; i++) {
+		for(int i=0; i<12; i++) {
 			init_simh();
 			saved_PC = 0100;
 			randomize_registers_all_values();
@@ -584,13 +588,16 @@ void emit_mov()
 
 			struct mem_t mem[5] = {
 				{ 0100, 012700   },
-				{ 0102, test_vals[i] },
+				{ 0102, test_vals[i % 6] },
 				{ 0104, 012701   },
 				{ 0106, 0        },
 				{ 0110, 0110001  }
 			};
 
-			json_t *obj = generate_test(&id, mem, 5);
+			if (i >= 6)
+				mem[4].value = 0010001;
+
+			json_t *obj = generate_test(&id, mem, 5, 3);
 			if (obj)
 				json_array_append_new(out, obj);
 		}
