@@ -687,6 +687,26 @@ void emit_mov()
 				json_array_append_new(out, obj);
 		}
 
+		{
+			init_simh();
+			saved_PC = 0100;
+			randomize_registers_all_values();
+			init_stack_registers();
+			PSW = 0;
+
+			struct mem_t mem[7] = {
+				{ 0100, 012701 },
+				{ 0102, 001000 },
+				{ 0104, 012771 },
+				{ 0106, 002222 },
+				{ 0110, 001000 },
+				{ 02000, 012345 },
+			};
+			json_t *obj = generate_test(&id, mem, 6, 2);
+			if (obj)
+				json_array_append_new(out, obj);
+		}
+
 		dump_json(filename, out);
 	}
 }
