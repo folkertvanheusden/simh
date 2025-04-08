@@ -593,29 +593,29 @@ void emit_mov()
 			};
 
 			int set = i / 6;
-			if (set == 1)
+			if (set == 1)  // R1
 				mem[4].value = 0010001;
-			else if (set == 2) {
+			else if (set == 2) {  // (R1)
 				mem[3].value = 0002000;
 				mem[4].value = 0110011;
 			}
-			else if (set == 3) {
+			else if (set == 3) {  // (R1)
 				mem[3].value = 0002000;
 				mem[4].value = 0010011;
 			}
-			else if (set == 4) {
+			else if (set == 4) {  // (R1)+
 				mem[3].value = 0002000;
 				mem[4].value = 0110021;
 			}
-			else if (set == 5) {
+			else if (set == 5) {  // (R1)+
 				mem[3].value = 0002000;
 				mem[4].value = 0010021;
 			}
-			else if (set == 6) {
+			else if (set == 6) {  // -(R1)
 				mem[3].value = 0002000;
 				mem[4].value = 0110041;
 			}
-			else if (set == 7) {
+			else if (set == 7) {  // -(R1)
 				mem[3].value = 0002000;
 				mem[4].value = 0010041;
 			}
@@ -637,7 +637,7 @@ void emit_mov()
 				{ 0102, test_vals[i % 6] },
 				{ 0104, 012701 },
 				{ 0106, 02000 },
-				{ 0110, 0110051 },
+				{ 0110, 0110051 },  // @-(R1)
 				{ 01776, 03000 },
 				{ 03000, 0 }
 			};
@@ -646,11 +646,11 @@ void emit_mov()
 			if (set == 1)
 				mem[4].value = 0010051;
 			else if (set == 2) {
-				mem[4].value = 0010031;
+				mem[4].value = 0010031;  // @(R1)+
 				mem[5].addr = 02000;
 			}
 			else if (set == 3) {
-				mem[4].value = 0110031;
+				mem[4].value = 0110031;  // @(R1)+
 				mem[5].addr = 02000;
 			}
 
@@ -671,7 +671,7 @@ void emit_mov()
 				{ 0102, test_vals[i % 6] },
 				{ 0104, 012701 },
 				{ 0106, 02000 },
-				{ 0110, 0110061 },
+				{ 0110, 0110061 },  // @(R1)
 				{ 0112, 0000004 },
 				{ 02004, 012345 },
 			};
@@ -697,7 +697,7 @@ void emit_mov()
 			struct mem_t mem[7] = {
 				{ 0100, 012701 },
 				{ 0102, 001000 },
-				{ 0104, 012771 },
+				{ 0104, 012771 },  // @X(R7)
 				{ 0106, 002222 },
 				{ 0110, 001000 },
 				{ 02000, 012345 },
