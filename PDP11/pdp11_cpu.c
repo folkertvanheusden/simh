@@ -285,9 +285,10 @@ struct __mem_writes {
 } *mem_writes;
 int n_mem_writes = 0;
 
+#define MAX_N_MEM_WRITES 512
 void init_mem_writes()
 {
-	mem_writes = (struct __mem_writes *)malloc(sizeof(struct __mem_writes) * 256);
+	mem_writes = (struct __mem_writes *)malloc(sizeof(struct __mem_writes) * MAX_N_MEM_WRITES);
 }
 
 void put_mem_write(uint8_t data, int32_t pa)
@@ -302,9 +303,17 @@ void put_mem_write(uint8_t data, int32_t pa)
 		}
 	}
 	if (found == 0) {
-		mem_writes[n_mem_writes].addr = pa;
-		mem_writes[n_mem_writes].data = data;
-		n_mem_writes++;
+		if (n_mem_writes >= MAX_N_MEM_WRITES) {
+			printf("MEMORY WRITES OVERFLOW a=%06o v=%06o\n", pa, data);
+			char *a = NULL;
+			*a = 123;
+		}
+		else {
+			//printf("write to a=%06o v=%06o\n", pa, data);
+			mem_writes[n_mem_writes].addr = pa;
+			mem_writes[n_mem_writes].data = data;
+			n_mem_writes++;
+		}
 	}
 }
 

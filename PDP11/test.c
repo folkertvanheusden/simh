@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 
 #include "pdp11_defs.h"
+#include "pdp11_cpumod.h"
 #include "sim_defs.h"
 
 //extern t_stat sim_brk_init(void);
@@ -20,6 +21,10 @@ extern t_stat cpu_reset(DEVICE *dptr);
 extern DEVICE cpu_dev;
 extern int32 STACKFILE[4];
 extern int32 sim_interval;
+extern t_stat reason;
+extern int32 MMR1;
+extern int32 MMR2;
+extern CPUTAB cpu_tab[];
 
 struct __mem_writes {
         int32_t addr;
@@ -71,21 +76,8 @@ void generate_test_values()
 	test_values[n_test_values++] = 65535;
 }
 
-json_t *generate_test(int *const id, struct mem_t *mem, size_t n_mem, int run_n_instructions)
+void put_mem(json_t *memory_i, struct mem_t *mem, int n_mem)
 {
-	json_t *before = json_object();
-
-	json_object_set(before, "PC", json_integer(saved_PC));
-
-	json_object_set(before, "run-n-instructions", json_integer(run_n_instructions));
-
-	json_object_set(before, "stack-0", json_integer(STACKFILE[0]));
-	json_object_set(before, "stack-1", json_integer(STACKFILE[1]));
-	json_object_set(before, "stack-2", json_integer(STACKFILE[2]));
-	json_object_set(before, "stack-3", json_integer(STACKFILE[3]));
-
-	json_t *memory_i = json_array();
-
 	for(size_t i=0; i<n_mem; i++) {
 		char buffer1[16];
 		char buffer2[16];
@@ -104,7 +96,28 @@ json_t *generate_test(int *const id, struct mem_t *mem, size_t n_mem, int run_n_
 		json_object_set(put_mem_i_1, buffer2, json_integer(mem[i].value >> 8));
 		json_array_append_new(memory_i, put_mem_i_1);
 	}
+}
 
+json_t *generate_test(int *const id, struct mem_t *mem, size_t n_mem, int run_n_instructions, struct mem_t *setup_mem, int n_setup_mem)
+{
+	json_t *before = json_object();
+
+	json_object_set(before, "PC", json_integer(saved_PC));
+
+	json_object_set(before, "run-n-instructions", json_integer(run_n_instructions));
+
+	json_object_set(before, "stack-0", json_integer(STACKFILE[0]));
+	json_object_set(before, "stack-1", json_integer(STACKFILE[1]));
+	json_object_set(before, "stack-2", json_integer(STACKFILE[2]));
+	json_object_set(before, "stack-3", json_integer(STACKFILE[3]));
+
+	json_object_set(before, "mmr1", json_integer(MMR1));
+	json_object_set(before, "mmr2", json_integer(MMR2));
+
+	json_t *memory_i = json_array();
+	put_mem(memory_i, mem, n_mem);
+	if (setup_mem)
+		put_mem(memory_i, setup_mem, n_setup_mem);
 	json_object_set(before, "memory", memory_i);
 
 	for(int k=0; k<6; k++) {
@@ -144,6 +157,9 @@ json_t *generate_test(int *const id, struct mem_t *mem, size_t n_mem, int run_n_
 	json_object_set(after, "stack-2", json_integer(STACKFILE[2]));
 	json_object_set(after, "stack-3", json_integer(STACKFILE[3]));
 
+	json_object_set(after, "mmr1", json_integer(MMR1));
+	json_object_set(after, "mmr2", json_integer(MMR2));
+
 	json_t *memory_o = json_array();
 
 	for(int i=0; i<n_mem_writes; i++) {
@@ -163,10 +179,12 @@ json_t *generate_test(int *const id, struct mem_t *mem, size_t n_mem, int run_n_
 	json_object_set(collection, "before", before);
 	json_object_set(collection, "after", after);
 
+	/*
 	if (failed) {
 		json_decref(collection);
 		return NULL;
 	}
+	*/
 
 	return collection;
 }
@@ -176,8 +194,13 @@ void init_simh()
 	// reset_all(0);  is this required?
 	cpu_reset(&cpu_dev);
 	sim_interval = 32767;
-
 	reset_mem_writes();
+	reason = 0;
+
+	cpu_model = MOD_1170;
+	cpu_type = 1u << cpu_model;
+	cpu_opt = cpu_tab[cpu_model].std;
+	cpu_set_bus (cpu_opt);
 }
 
 void randomize_registers_all_values()
@@ -213,7 +236,7 @@ void produce_set_register(const uint16_t instr, const uint16_t psw, int *const i
 
 			PSW = psw;
 
-			json_t *obj = generate_test(id, mem, 1, 1);
+			json_t *obj = generate_test(id, mem, 1, 1, NULL, 0);
 			if (obj)
 				json_array_append_new(out, obj);
 		}
@@ -246,7 +269,7 @@ void produce_set_register_indirect(const uint16_t instr, const uint16_t psw, int
 
 			PSW = psw;
 
-			json_t *obj = generate_test(id, mem, 2, 1);
+			json_t *obj = generate_test(id, mem, 2, 1, NULL, 0);
 			if (obj)
 				json_array_append_new(out, obj);
 		}
@@ -297,7 +320,7 @@ void emit_branch_instructions()
 
 					PSW = psw_val;
 
-					json_t *obj = generate_test(&id, mem, 1, 1);
+					json_t *obj = generate_test(&id, mem, 1, 1, NULL, 0);
 					if (obj)
 						json_array_append_new(out, obj);
 				}
@@ -333,7 +356,7 @@ void emit_condition_sets()
 
 			PSW = psw_val;
 
-			json_t *obj = generate_test(&id, mem, 1, 1);
+			json_t *obj = generate_test(&id, mem, 1, 1, NULL, 0);
 			if (obj)
 				json_array_append_new(out, obj);
 		}
@@ -403,11 +426,11 @@ void emit_single_operand_instructions()
 
 					if (groups[group] == 00001 || dst == 1) {
 						REGFILE[0][0] = REGFILE[0][1] = 02000;
-						obj = generate_test(&id, mem, 2, 1);
+						obj = generate_test(&id, mem, 2, 1, NULL, 0);
 					}
 					else {
 						REGFILE[0][0] = REGFILE[0][1] = test_values[v1];
-						obj = generate_test(&id, mem, 1, 1);
+						obj = generate_test(&id, mem, 1, 1, NULL, 0);
 					}
 
 					if (obj)
@@ -517,7 +540,7 @@ void emit_misc_operations()
 
 				PSW = psw_val;
 
-				json_t *obj = generate_test(&id, mem, 3, 1);
+				json_t *obj = generate_test(&id, mem, 3, 1, NULL, 0);
 				if (obj)
 					json_array_append_new(out, obj);
 			}
@@ -558,7 +581,7 @@ void emit_misc_operations()
 
 		PSW = 012;
 
-		json_t *obj = generate_test(&id, mem, 1, 1);
+		json_t *obj = generate_test(&id, mem, 1, 1, NULL, 0);
 		if (obj)
 			json_array_append_new(out, obj);
 
@@ -566,148 +589,227 @@ void emit_misc_operations()
 	}
 }
 
+/*
+  	MOV     #0172340,R0
+	MOV     #0000,(R0)  ; 000000-020000 (K,I) will be mapped to physical address 00000
+	MOV     #0172300,R0
+	MOV     #077006,(R0)  ; 000000-020000 full access
+
+	MOV     #0172366,R0
+	MOV     #0400,(R0)  ; 060000-080000 (K,D) will be mapped to physical address 04000
+	MOV     #0172326,R0
+	MOV     #077006,(R0)  ; 000000-020000 full access
+
+	MOV     #0177572,R0
+	BIS     #513,(R0)  ; enable MMU & trap
+
+	MOV     #0100,R0  ; JMP to main code
+	JMP     (R0)
+*/
+#define MMU_SETUP_PROG \
+{ 0500, 012700 }, \
+{ 0502, 0172340 }, \
+{ 0504, 012710 }, \
+{ 0506, 0000000 }, \
+{ 0510, 012700 }, \
+{ 0512, 0172300 }, \
+{ 0514, 012710 }, \
+{ 0516, 0077006 }, \
+{ 0520, 012700 }, \
+{ 0522, 0172366 }, \
+{ 0524, 012710 }, \
+{ 0526, 0000400 }, \
+{ 0530, 012700 }, \
+{ 0532, 0172326 }, \
+{ 0534, 012710 }, \
+{ 0536, 0077006 }, \
+{ 0540, 012700 }, \
+{ 0542, 0177572 }, \
+{ 0544, 052710 }, \
+{ 0546, 0000513 }, \
+{ 0550, 012700 }, \
+{ 0552, 0000100 }, \
+{ 0554, 000110 }, \
+{ 0004, 02300 }, /* trap address */ \
+{ 0006, 0123456 }, /* PSW */ \
+{ 0034, 02500 }, /* trap address */ \
+{ 0036, 0177777 }, /* PSW */ \
+
 void emit_mov()
 {
 	printf("mov instructions\n");
 
-	const char *const filename = "pdp1170-valtest-MOV.json";
-	if (file_exist(filename) == 0) {
-		int id = 0;
-		json_t *out = json_array();
+	struct mem_t setup[27] = {
+		MMU_SETUP_PROG
+	};
 
-		uint16_t test_vals[] = { 0, 127, 128, 255, 256, 65535 };
+	for(int d_i=0; d_i<2; d_i++) {
+		char filename[64];
+		sprintf(filename, "pdp1170-valtest-MOV_%d.json", d_i);
 
-		for(int i=0; i<48; i++) {
-			init_simh();
-			saved_PC = 0100;
-			randomize_registers_all_values();
-			init_stack_registers();
-			PSW = 0;
+		if (file_exist(filename) == 0) {
+			int id = 0;
+			json_t *out = json_array();
 
-			struct mem_t mem[5] = {
-				{ 0100, 012700   },
-				{ 0102, test_vals[i % 6] },
-				{ 0104, 012701   },
-				{ 0106, 0        },
-				{ 0110, 0110001  }
-			};
+			{
+				init_simh();
+				saved_PC = 0100;
+				randomize_registers_all_values();
+				init_stack_registers();
+				PSW = 0;
 
-			int set = i / 6;
-			if (set == 1)  // R1
-				mem[4].value = 0010001;
-			else if (set == 2) {  // (R1)
-				mem[3].value = 0002000;
-				mem[4].value = 0110011;
-			}
-			else if (set == 3) {  // (R1)
-				mem[3].value = 0002000;
-				mem[4].value = 0010011;
-			}
-			else if (set == 4) {  // (R1)+
-				mem[3].value = 0002000;
-				mem[4].value = 0110021;
-			}
-			else if (set == 5) {  // (R1)+
-				mem[3].value = 0002000;
-				mem[4].value = 0010021;
-			}
-			else if (set == 6) {  // -(R1)
-				mem[3].value = 0002000;
-				mem[4].value = 0110041;
-			}
-			else if (set == 7) {  // -(R1)
-				mem[3].value = 0002000;
-				mem[4].value = 0010041;
+				struct mem_t mem[7] = {
+					{ 0100, 012705 },  // MOV #01234,R5
+				        { 0102, 001234 },
+					{ 0104, 010525 },  // MOV R5,(R5)+
+				};
+				json_t *obj = generate_test(&id, mem, 3, 2, NULL, 0);
+				if (obj)
+					json_array_append_new(out, obj);
 			}
 
-			json_t *obj = generate_test(&id, mem, 5, 3);
-			if (obj)
-				json_array_append_new(out, obj);
+			uint16_t test_vals[] = { 0, 127, 128, 255, 256, 65535 };
+
+			for(int i=0; i<24; i++) {
+				init_simh();
+				saved_PC = 0100;
+				randomize_registers_all_values();
+				init_stack_registers();
+				PSW = 0;
+
+				struct mem_t mem[7] = {
+					{ 0100, 012700  },
+					{ 0102, test_vals[i % 6] },
+					{ 0104, 012701 },
+					{ 0106, 02000 },
+					{ 0110, 0110051 },  // @-(R1)
+					{ 01776, 03000 },
+					{ 03000, 0 }
+				};
+
+				int set = i / 6;
+				if (set == 1)
+					mem[4].value = 0010051;
+				else if (set == 2) {
+					mem[4].value = 0010031;  // @(R1)+
+					mem[5].addr = 02000;
+				}
+				else if (set == 3) {
+					mem[4].value = 0110031;  // @(R1)+
+					mem[5].addr = 02000;
+				}
+
+				json_t *obj = generate_test(&id, mem, 7, 3, NULL, 0);
+				if (obj)
+					json_array_append_new(out, obj);
+			}
+
+			for(int i=0; i<12; i++) {
+				init_simh();
+				saved_PC = 0100;
+				randomize_registers_all_values();
+				init_stack_registers();
+				PSW = 0;
+
+				struct mem_t mem[7] = {
+					{ 0100, 012700  },
+					{ 0102, test_vals[i % 6] },
+					{ 0104, 012701 },
+					{ 0106, 02000 },
+					{ 0110, 0110061 },  // @(R1)
+					{ 0112, 0000004 },
+					{ 02004, 012344 },
+				};
+
+				int set = i / 6;
+				if (set == 1) {
+					mem[5].value = 0100004;
+					mem[6].addr  = 0102004;
+				}
+
+				json_t *obj = generate_test(&id, mem, 7, 3, NULL, 0);
+				if (obj)
+					json_array_append_new(out, obj);
+			}
+
+			{
+				init_simh();
+				saved_PC = 0100;
+				randomize_registers_all_values();
+				init_stack_registers();
+				PSW = 0;
+
+				struct mem_t mem[7] = {
+					{ 0100, 012701 },
+					{ 0102, 001000 },
+					{ 0104, 012771 },  // @X(R7)
+					{ 0106, 002222 },
+					{ 0110, 001000 },
+					{ 02000, 012344 },
+				};
+				json_t *obj = generate_test(&id, mem, 6, 2, NULL, 0);
+				if (obj)
+					json_array_append_new(out, obj);
+			}
+
+			for(int i=0; i<48; i++) {
+				init_simh();
+				randomize_registers_all_values();
+				init_stack_registers();
+				PSW = 0;
+
+				struct mem_t mem[5] = {
+					{ 0100, 012700   },  // MOV #random,(R0)
+					{ 0102, test_vals[i % 6] },
+					{ 0104, 012701   },  // MOV #0, (R1)
+					{ 0106, 0        },
+					{ 0110, 0110001  },  // MOV R0, R1
+				};
+
+				int set = i / 6;
+				if (set == 1)  // R1
+					mem[4].value = 0010001;  // MOVB R0,R1
+				else if (set == 2) {  // (R1)
+					mem[3].value = 0060000;  // MOV #060000,R1
+					mem[4].value = 0110011;  // MOV R0,(R1)
+				}
+				else if (set == 3) {  // (R1)
+					mem[3].value = 0060000;  // MOV #060000,R1
+					mem[4].value = 0010011;  // MOVB R0,(R1)
+				}
+				else if (set == 4) {  // (R1)+
+					mem[3].value = 0060000;  // MOV #060000,R1
+					mem[4].value = 0110021;
+				}
+				else if (set == 5) {  // (R1)+
+					mem[3].value = 0060000;
+					mem[4].value = 0010021;
+				}
+				else if (set == 6) {  // -(R1)
+					mem[3].value = 0060000;
+					mem[4].value = 0110041;
+				}
+				else if (set == 7) {  // -(R1)
+					mem[3].value = 0060000;
+					mem[4].value = 0010041;
+				}
+
+				json_t *obj = NULL;
+				if (d_i == 1) {
+					saved_PC = 0500;
+					obj = generate_test(&id, mem, 5, 3 + 12, setup, 27);
+				}
+				else {
+					saved_PC = 0100;
+					obj = generate_test(&id, mem, 5, 3, NULL, 0);
+				}
+
+				if (obj)
+					json_array_append_new(out, obj);
+			}
+
+			dump_json(filename, out);
 		}
-
-		for(int i=0; i<24; i++) {
-			init_simh();
-			saved_PC = 0100;
-			randomize_registers_all_values();
-			init_stack_registers();
-			PSW = 0;
-
-			struct mem_t mem[7] = {
-				{ 0100, 012700  },
-				{ 0102, test_vals[i % 6] },
-				{ 0104, 012701 },
-				{ 0106, 02000 },
-				{ 0110, 0110051 },  // @-(R1)
-				{ 01776, 03000 },
-				{ 03000, 0 }
-			};
-
-			int set = i / 6;
-			if (set == 1)
-				mem[4].value = 0010051;
-			else if (set == 2) {
-				mem[4].value = 0010031;  // @(R1)+
-				mem[5].addr = 02000;
-			}
-			else if (set == 3) {
-				mem[4].value = 0110031;  // @(R1)+
-				mem[5].addr = 02000;
-			}
-
-			json_t *obj = generate_test(&id, mem, 7, 3);
-			if (obj)
-				json_array_append_new(out, obj);
-		}
-
-		for(int i=0; i<12; i++) {
-			init_simh();
-			saved_PC = 0100;
-			randomize_registers_all_values();
-			init_stack_registers();
-			PSW = 0;
-
-			struct mem_t mem[7] = {
-				{ 0100, 012700  },
-				{ 0102, test_vals[i % 6] },
-				{ 0104, 012701 },
-				{ 0106, 02000 },
-				{ 0110, 0110061 },  // @(R1)
-				{ 0112, 0000004 },
-				{ 02004, 012345 },
-			};
-
-			int set = i / 6;
-			if (set == 1) {
-				mem[5].value = 0100004;
-				mem[6].addr  = 0102004;
-			}
-
-			json_t *obj = generate_test(&id, mem, 7, 3);
-			if (obj)
-				json_array_append_new(out, obj);
-		}
-
-		{
-			init_simh();
-			saved_PC = 0100;
-			randomize_registers_all_values();
-			init_stack_registers();
-			PSW = 0;
-
-			struct mem_t mem[7] = {
-				{ 0100, 012701 },
-				{ 0102, 001000 },
-				{ 0104, 012771 },  // @X(R7)
-				{ 0106, 002222 },
-				{ 0110, 001000 },
-				{ 02000, 012345 },
-			};
-			json_t *obj = generate_test(&id, mem, 6, 2);
-			if (obj)
-				json_array_append_new(out, obj);
-		}
-
-		dump_json(filename, out);
 	}
 }
 
