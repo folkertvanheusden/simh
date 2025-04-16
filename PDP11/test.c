@@ -540,6 +540,9 @@ void emit_misc_operations()
 
 				PSW = psw_val;
 
+				//if (instr == 2)
+				//	printf("PSW=%06o, ", PSW);
+
 				json_t *obj = generate_test(&id, mem, 3, 1, NULL, 0);
 				if (obj)
 					json_array_append_new(out, obj);

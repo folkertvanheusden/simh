@@ -871,7 +871,7 @@ else {
    Check for traps or interrupts.  If trap, locate the vector and check
    for stop condition.  If interrupt, locate the vector.
 */ 
-
+int show = 0;
 while (reason == 0)  {
 
     int32 IR, srcspec, srcreg, dstspec, dstreg;
@@ -1095,8 +1095,11 @@ while (reason == 0)  {
                     break;
                     }
             case 2:                                     /* RTI */
+//		show = 1;
                 src = ReadW (SP | dsenable);
                 src2 = ReadW (((SP + 2) & 0177777) | dsenable);
+//		if (IR == 2)
+//			printf("> %06o %06o", src, src2);
                 STACKFILE[cm] = SP = (SP + 4) & 0177777;
                 oldrs = rs;
                 put_PSW (src2, (cm != MD_KER));         /* store PSW, prot */
@@ -1109,11 +1112,14 @@ while (reason == 0)  {
                 SP = STACKFILE[cm];
                 isenable = calc_is (cm);
                 dsenable = calc_ds (cm);
+//		printf("(%d)", trap_req);
                 trap_req = calc_ints (ipl, trap_req);
                 JMP_PC (src);
                 if (CPUT (HAS_RTT) && tbit &&           /* RTT impl? */
                     (IR == 000002))
                     setTRAP (TRAP_TRC);                 /* RTI immed trap */
+//		if (IR == 2)
+//			printf("| %06o %06o <%d|%d>", PC, get_PSW(), trap_req, TRAP_INT);
                 break;
             case 7:                                     /* MFPT */
                 if (CPUT (HAS_MFPT))                    /* implemented? */
@@ -2472,7 +2478,7 @@ while (reason == 0)  {
         else setTRAP (TRAP_ILL);
         break;                                          /* end case 017 */
         }                                               /* end switch op */
-    if (trap_req == 0)
+    if (trap_req == 0 || trap_req == 2048 /* RTI/RTT? */)
     break;
     }                                                   /* end main loop */
 
@@ -2483,6 +2489,8 @@ for (i = 0; i < 6; i++)
     REGFILE[i][rs] = R[i];
 STACKFILE[cm] = SP;
 saved_PC = PC & 0177777;
+//if (show)
+//printf("%06o %06o\n", saved_PC, PSW);
 pcq_r->qptr = pcq_p;                                    /* update pc q ptr */
 set_r_display (rs, cm);
 return reason;
