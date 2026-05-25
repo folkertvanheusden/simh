@@ -1,0 +1,93 @@
+This changed version of simh emits json-files with (PDP-11) tests.
+These tests can be used to verify if your emulator does at least the processor emulation the same as simh does. This assumes that simh has it all correct!
+
+* install either jansson-devel or libjansson-dev
+* checkout valgen branch
+* mkdir build && cd build && cmake .. && make -j4 pdp11-validator-gen
+
+This results in BIN/pdp11-validator-gen. Run that program but only on a system with copieus amounts of ram (at least 48 GB). If it crashes, then you can simply restart it: it will continue where it left off.
+The result is 12 GB of json-files, that look like:
+
+Example:
+
+[                           <-- it is an array of json objects
+ {
+  "id": 0,                  <-- each test has an id
+  "before": {
+   "PC": 64,                <-- initial PC
+   "run-n-instructions": 1, <-- how many instructions to run
+   "stack-0": 4096,         <-- initial registers and memory
+   "stack-1": 4096,         <-- ...
+   "stack-2": 4096,
+   "stack-3": 4096,
+   "mmr1": 0,
+   "mmr2": 0,
+   "memory": [
+    {
+     "000100": 16
+    },
+    {
+     "000101": 137
+    }
+   ],
+   "reg-0.0": 40649,        <-- two sets of registers
+   "reg-0.1": 8329,             stack is in stack-%d (%d is run mode)
+   "reg-1.0": 27705,
+   "reg-1.1": 31693,
+   "reg-2.0": 8435,
+   "reg-2.1": 39168,
+   "reg-3.0": 18352,
+   "reg-3.1": 53646,
+   "reg-4.0": 3407,
+   "reg-4.1": 62,
+   "reg-5.0": 24859,
+   "reg-5.1": 35685,
+   "PSW": 10
+  },
+  "after": {                <-- like 'before' but what things should be
+   "PC": 2,                     after the run. anything different? then
+   "reg-0.0": 40649,            test failed
+   "reg-0.1": 8329,
+   "reg-1.0": 27705,
+   "reg-1.1": 31693,
+   "reg-2.0": 8435,
+   "reg-2.1": 39168,
+   "reg-3.0": 18352,
+   "reg-3.1": 53646,
+   "reg-4.0": 3407,
+   "reg-4.1": 62,
+   "reg-5.0": 24859,
+   "reg-5.1": 35685,
+   "PSW": 0,
+   "stack-0": 4092,
+   "stack-1": 4096,
+   "stack-2": 4096,
+   "stack-3": 4096,
+   "mmr1": 0,
+   "mmr2": 0,
+   "memory": [
+    {
+     "000100": 16
+    },
+    {
+     "000101": 137
+    },
+    {
+     "007776": 10
+    },
+    {
+     "007777": 0
+    },
+    {
+     "007774": 66
+    },
+    {
+     "007775": 0
+    }
+   ]
+  }
+ }
+]
+
+This was implemented by Folkert van Heusden <folkert@vanheusden.com>.
+License is of course the same as the rest of the simh code.
