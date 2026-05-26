@@ -984,7 +984,8 @@ while (reason == 0)  {
         if ((cm == MD_KER) && (SP < (STKLIM + STKL_Y)) &&
             (trapnum != TRAP_V_RED) && (trapnum != TRAP_V_YEL))
             set_stack_trap (SP);
-        continue;                                       /* end if traps */
+//        continue;                                       /* end if traps */
+	break;
         }
 
 /* Fetch and decode next instruction */
