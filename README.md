@@ -1,6 +1,6 @@
 ## test-json-generator
 
-This branch is special, see test-json-generator.txt for details.
+This branch is special, see [test-json-generator.txt](test-json-generator.txt) for details.
 
 
 
