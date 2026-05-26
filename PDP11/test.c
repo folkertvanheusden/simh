@@ -1,6 +1,8 @@
 #include <jansson.h>
 #include <stdio.h>
+#include <string.h>
 #include <time.h>
+#include <openssl/evp.h>
 #include <sys/stat.h>
 
 #include "pdp11_defs.h"
@@ -50,6 +52,24 @@ int is_prime(int n) {
     }
     return 1;
 }
+
+// Source - https://stackoverflow.com/a/61333376
+void bytes2md5(const char *data, int len, char *md5buf)
+{
+  // Based on https://www.openssl.org/docs/manmaster/man3/EVP_DigestUpdate.html
+  EVP_MD_CTX *mdctx = EVP_MD_CTX_new();
+  const EVP_MD *md = EVP_md5();
+  unsigned char md_value[EVP_MAX_MD_SIZE];
+  unsigned int md_len, i;
+  EVP_DigestInit_ex(mdctx, md, NULL);
+  EVP_DigestUpdate(mdctx, data, len);
+  EVP_DigestFinal_ex(mdctx, md_value, &md_len);
+  EVP_MD_CTX_free(mdctx);
+  for (i = 0; i < md_len; i++) {
+    snprintf(&(md5buf[i * 2]), 16 * 2, "%02x", md_value[i]);
+  }
+}
+
 
 int file_exist(const char *const filename)
 {
@@ -174,12 +194,16 @@ json_t *generate_test(int *const id, struct mem_t *mem, size_t n_mem, int run_n_
 	json_object_set(after, "memory", memory_o);
 
 	json_t *collection = json_object();
-	json_object_set(collection, "id", json_integer(*id));
-	(*id)++;
 	json_object_set(collection, "before", before);
 	json_object_set(collection, "after", after);
 
-	/*
+	char *temp = json_dumps(collection, 0);
+	char md5[33];
+	bytes2md5(temp, strlen(temp), md5);
+	free(temp);
+	json_object_set(collection, "id", json_string(md5));
+
+	/* TODO?
 	if (failed) {
 		json_decref(collection);
 		return NULL;

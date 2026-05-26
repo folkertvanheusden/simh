@@ -1,7 +1,7 @@
 This changed version of simh emits json-files with (PDP-11) tests.
 These tests can be used to verify if your emulator does at least the processor emulation the same as simh does. This assumes that simh has it all correct!
 
-* install either jansson-devel or libjansson-dev
+* install libjansson-dev and libssl-dev
 * checkout valgen branch
 * mkdir build && cd build && cmake .. && make -j4 pdp11-validator-gen
 
@@ -12,7 +12,7 @@ Example:
 
 [                           <-- it is an array of json objects
  {
-  "id": 0,                  <-- each test has an id
+  "id": "e4257178ee0a6ec74529113f9784450f",  <-- each test has an id
   "before": {
    "PC": 64,                <-- initial PC
    "run-n-instructions": 1, <-- how many instructions to run

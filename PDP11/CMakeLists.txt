@@ -165,3 +165,8 @@ add_simulator(pdp11-validator-gen
     LABEL PDP11
     PKG_FAMILY pdp11_family
     TEST pdp11)
+
+include(FindPkgConfig)
+pkg_check_modules(CRYPTO REQUIRED libcrypto)
+target_include_directories(pdp11-validator-gen PUBLIC ${CRYPTO_INCLUDE_DIRS})
+target_link_libraries(pdp11-validator-gen PUBLIC ${CRYPTO_LIBRARIES})
